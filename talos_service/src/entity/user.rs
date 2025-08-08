@@ -1,6 +1,6 @@
 use crate::logger;
 use crate::utils::time_utils;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,12 +14,12 @@ pub struct User {
     age: u32,                           // 年龄
     phone: String,                      // 手机号
     email: String,                      // 邮箱
-    create_time: DateTime<Utc>,         // 创建时间
-    update_time: Option<DateTime<Utc>>, // 更新时间
+    create_time: NaiveDateTime,         // 创建时间
+    update_time: Option<NaiveDateTime>, // 更新时间
 }
 
 // 前端输入或返回的用户数据
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct UserResponse {
     user_name: String, // 用户名
     password: String,  // 密码

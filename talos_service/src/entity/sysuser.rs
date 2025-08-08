@@ -1,6 +1,6 @@
 use crate::logger;
 use crate::utils::time_utils;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -25,8 +25,8 @@ pub struct SysUser {
     password: String,
     role: UserRole,
     status: UserStatus,
-    create_time: DateTime<Utc>,
-    update_time: Option<DateTime<Utc>>,
+    create_time: NaiveDateTime,
+    update_time: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -35,6 +35,20 @@ pub struct SysUserResponse {
     password: String,
     role: UserRole,
     status: UserStatus,
+}
+
+impl Default for SysUser {
+    fn default() -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            user_name: "".to_string(),
+            password: "".to_string(),
+            role: UserRole::User,
+            status: UserStatus::Active,
+            create_time: time_utils::get_current_time(),
+            update_time: None,
+        }
+    }
 }
 
 impl SysUser {

@@ -1,8 +1,15 @@
-use actix_web::{App, HttpServer, Responder, web};
+use actix_web::{App, HttpServer, Responder, Scope, web, post};
 mod entity;
 mod logger;
+mod routes;
 mod utils;
+use routes::user_route;
 
+pub fn user_scope() -> Scope {
+    web::scope("/user").service(user_route::register_user)
+}
+
+#[post("/index")]
 async fn index() -> impl Responder {
     "Hello, world!"
 }
@@ -19,7 +26,9 @@ async fn main() -> std::io::Result<()> {
 
     logger::info("Starting server");
     HttpServer::new(|| {
-        App::new().route("/", web::get().to(index))
+        App::new()
+        .service(index)
+        .service(user_scope())
         // .service(greet)
         // .service(create_user)
         // .service(user_exist)
