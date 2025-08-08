@@ -1,5 +1,7 @@
 use actix_web::{App, HttpServer, Responder, web};
+mod entity;
 mod logger;
+mod utils;
 
 async fn index() -> impl Responder {
     "Hello, world!"

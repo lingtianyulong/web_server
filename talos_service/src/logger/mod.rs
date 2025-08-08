@@ -29,7 +29,6 @@ impl Default for LoggerConfig {
 }
 
 impl LoggerConfig {
-
     fn to_json(&self) -> String {
         serde_json::to_string_pretty(self).unwrap()
     }
@@ -61,7 +60,6 @@ pub fn init(cfg_path: &str) -> bool {
     let file_path = Path::new(cfg_path);
     let mut config = LoggerConfig::default();
     if !file_path.exists() {
-
         // 如果路径不存在，创建目录
         if let Some(parent) = file_path.parent() {
             if !parent.exists() {

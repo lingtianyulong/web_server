@@ -1,35 +1,43 @@
+use crate::logger;
+use crate::utils::time_utils;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-mod utils;
-use utils::time_utils;
 
 // 向数据库存储的用户数据
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    id: String,                 // 用户id, 唯一标识
-    user_name: String,          // 用户名
-    password: String,           // 密码
-    sex: String,                // 性别
-    age: u32,                   // 年龄
-    phone: String,              // 手机号
-    email: String,              // 邮箱
-    create_time: DateTime<Utc>, // 创建时间
-    update_time: DateTime<Utc>, // 更新时间
+    id: String,                         // 用户id, 唯一标识
+    user_name: String,                  // 用户名
+    password: String,                   // 密码
+    sex: String,                        // 性别
+    age: u32,                           // 年龄
+    phone: String,                      // 手机号
+    email: String,                      // 邮箱
+    create_time: DateTime<Utc>,         // 创建时间
+    update_time: Option<DateTime<Utc>>, // 更新时间
 }
 
 // 前端输入或返回的用户数据
 #[derive(Debug)]
 pub struct UserResponse {
-    user_name: String,           // 用户名
-    password: String,            // 密码
-    sex: String,                 // 性别
-    age: u32,                    // 年龄
-    phone: String,               // 手机号
-    email: String,               // 邮箱
+    user_name: String, // 用户名
+    password: String,  // 密码
+    sex: String,       // 性别
+    age: u32,          // 年龄
+    phone: String,     // 手机号
+    email: String,     // 邮箱
 }
 
 impl User {
-    pub fn new(user_name: String, password: String) -> Self {
+    pub fn new(
+        user_name: String,
+        password: String,
+        sex: String,
+        age: u32,
+        phone: String,
+        email: String,
+    ) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             user_name,
@@ -39,6 +47,7 @@ impl User {
             phone,
             email,
             create_time: time_utils::get_current_time(),
+            update_time: None,
         }
     }
 
@@ -91,6 +100,7 @@ impl User {
             phone: user_response.phone,
             email: user_response.email,
             create_time: time_utils::get_current_time(),
+            update_time: None,
         }
     }
 }
