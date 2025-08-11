@@ -21,18 +21,20 @@ pub enum UserStatus {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SysUser {
     id: String,
-    user_name: String,
-    password: String,
-    role: UserRole,
-    status: UserStatus,
-    create_time: NaiveDateTime,
-    update_time: Option<NaiveDateTime>,
+    user_name: String,                          // 用户名
+    password: String,                           // 密码
+    phone: String,                              // 手机号
+    role: UserRole,                             // 角色
+    status: UserStatus,                         // 状态
+    create_time: NaiveDateTime,                 // 创建时间
+    update_time: Option<NaiveDateTime>,         // 更新时间
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SysUserResponse {
-    user_name: String,
+    user_name: String,  
     password: String,
+    phone: String,
     role: UserRole,
     status: UserStatus,
 }
@@ -43,6 +45,7 @@ impl Default for SysUser {
             id: Uuid::new_v4().to_string(),
             user_name: "".to_string(),
             password: "".to_string(),
+            phone: "".to_string(),
             role: UserRole::User,
             status: UserStatus::Active,
             create_time: time_utils::get_current_time(),
@@ -57,6 +60,7 @@ impl SysUser {
             id: Uuid::new_v4().to_string(),
             user_name,
             password,
+            phone: "".to_string(),
             role: UserRole::User,
             status: UserStatus::Active,
             create_time: time_utils::get_current_time(),
@@ -70,6 +74,7 @@ impl SysUser {
             id: Uuid::new_v4().to_string(),
             user_name: user_response.user_name,
             password: user_response.password,
+            phone: user_response.phone,
             role: user_response.role,
             status: user_response.status,
             create_time: time_utils::get_current_time(),

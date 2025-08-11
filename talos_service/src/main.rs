@@ -1,4 +1,4 @@
-use actix_web::{App, HttpServer, Responder, Scope, post, web};
+use actix_web::{App, HttpServer, Scope, web};
 mod entity;
 mod logger;
 mod routes;
