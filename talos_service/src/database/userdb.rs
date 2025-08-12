@@ -24,9 +24,7 @@ pub async fn user_exist(user_name: &str) -> bool {
     let db = dbutil::DButil::instance();
     let pool = db.pool();
     let user_record = sqlx::query!(
-        "SELECT EXISTS(SELECT 1 FROM user WHERE user_name=?) AS result",
-        user_name
-    )
+        "SELECT EXISTS(SELECT 1 FROM user WHERE user_name=?) AS result", user_name)
     .fetch_optional(pool)
     .await;
 
