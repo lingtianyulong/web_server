@@ -51,6 +51,30 @@ impl User {
         }
     }
 
+    pub fn create_user(
+        id: String,
+        user_name: String,
+        password: String,
+        sex: String,
+        age: u32,
+        phone: String,
+        email: String,
+        create_time: NaiveDateTime,
+        update_time: Option<NaiveDateTime>,
+    ) -> Self {
+        Self {
+            id,
+            user_name,
+            password,
+            sex,
+            age,
+            phone,
+            email,
+            create_time,
+            update_time,
+        }
+    }
+
     pub fn get_user_id(&self) -> &str {
         &self.id
     }
@@ -99,6 +123,21 @@ impl User {
             age: user_response.age,
             phone: user_response.phone,
             email: user_response.email,
+            create_time: time_utils::get_current_time(),
+            update_time: None,
+        }
+    }
+
+    // 从数据库记录创建用户（仅基本字段）
+    pub fn from_db_record(id: String, user_name: String, password: String) -> Self {
+        Self {
+            id,
+            user_name,
+            password,
+            sex: "".to_string(),
+            age: 0,
+            phone: "".to_string(),
+            email: "".to_string(),
             create_time: time_utils::get_current_time(),
             update_time: None,
         }

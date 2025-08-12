@@ -21,18 +21,18 @@ pub enum UserStatus {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SysUser {
     id: String,
-    user_name: String,                          // 用户名
-    password: String,                           // 密码
-    phone: String,                              // 手机号
-    role: UserRole,                             // 角色
-    status: UserStatus,                         // 状态
-    create_time: NaiveDateTime,                 // 创建时间
-    update_time: Option<NaiveDateTime>,         // 更新时间
+    user_name: String,                  // 用户名
+    password: String,                   // 密码
+    phone: String,                      // 手机号
+    role: UserRole,                     // 角色
+    status: UserStatus,                 // 状态
+    create_time: NaiveDateTime,         // 创建时间
+    update_time: Option<NaiveDateTime>, // 更新时间
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SysUserResponse {
-    user_name: String,  
+    user_name: String,
     password: String,
     phone: String,
     role: UserRole,

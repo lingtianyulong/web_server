@@ -1,4 +1,5 @@
 use actix_web::{App, HttpServer, Scope, web};
+mod database;
 mod entity;
 mod logger;
 mod routes;
