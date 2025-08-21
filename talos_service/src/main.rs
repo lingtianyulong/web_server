@@ -1,13 +1,52 @@
-use actix_web::{App, HttpServer, Scope, web};
-mod database;
+use actix_web::{App, HttpServer, get, Responder, HttpResponse};
+use reqwest;
+use serde_json::json;
+// mod database;
 mod entity;
 mod logger;
 mod routes;
 mod utils;
 use routes::user_route;
 
-pub fn user_scope() -> Scope {
-    web::scope("/user").service(user_route::register_user)
+
+async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
+
+    let client = reqwest::Client::new();
+    let service = json!({
+        "ID": uuid::Uuid::new_v4().to_string(),
+        "Name": "user_service",
+        "Tags": ["用户服务"],
+        "Port": 8080,
+        "Check": {
+            "HTTP": "http://127.0.0.1:8080/health",
+            "Interval": "10s",
+            "Timeout": "5s"
+        }
+    });
+
+    // 调用注册服务 API
+    let res = client
+        .put("http://127.0.0.1:8500/v1/agent/service/register")
+        .json(&service)
+        .send()
+        .await?;
+    if res.status().is_success() {
+        println!("服务注册成功: {:?}", res);
+    } else {
+        println!("服务注册失败: {:?}", res);
+    }
+
+    Ok(())
+}
+
+#[get("/hello")]
+async fn hello() -> impl Responder {
+    HttpResponse::Ok().body("Hello from Rust service!")
+}
+
+#[get("/health")]
+async fn health() -> impl Responder {
+    HttpResponse::Ok().body("OK")
 }
 
 #[actix_web::main]
@@ -21,7 +60,14 @@ async fn main() -> std::io::Result<()> {
     }
 
     logger::info("Starting server");
-    HttpServer::new(|| App::new().service(user_scope()))
+
+    tokio::spawn(async move {
+        if let Err(e) = register_service().await {
+            eprintln!("服务注册失败: {:?}", e);
+        }
+    });
+
+    HttpServer::new(|| App::new().service(hello).service(health))
         .bind("0.0.0.0:8080")?
         .run()
         .await?;

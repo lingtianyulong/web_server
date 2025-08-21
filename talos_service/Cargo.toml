@@ -13,5 +13,6 @@ uuid = { version = "1.13.0", features = ["v4"] }
 tokio = { version = "1.40.0", features = ["full"] }
 chrono = { version = "0.4.30", features = ["serde"] }
 dotenv = "0.15.0"
-
-sqlx = { version = "0.8.2", features = ["runtime-tokio-rustls", "mysql", "macros", "migrate", "chrono", "uuid"] }
+consul = "0.4.2"
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "mysql", "macros", "migrate", "chrono", "uuid"] }
+reqwest = { version = "0.12.23", features = ["json", "rustls-tls"] }
