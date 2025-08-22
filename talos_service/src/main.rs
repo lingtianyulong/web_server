@@ -1,7 +1,6 @@
 use actix_web::{App, HttpServer, get, Responder, HttpResponse};
 use reqwest;
 use serde_json::json;
-use logger::*;
 // mod database;
 mod entity;
 // mod logger;
