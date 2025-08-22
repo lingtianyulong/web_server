@@ -1422,6 +1422,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
+name = "logger"
+version = "0.1.0"
+dependencies = [
+ "flexi_logger",
+ "log",
+ "once_cell",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lru-slab"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1776,7 +1787,7 @@ dependencies = [
  "once_cell",
  "socket2 0.5.10",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2587,8 +2598,7 @@ dependencies = [
  "chrono",
  "consul",
  "dotenv",
- "flexi_logger",
- "log",
+ "logger",
  "reqwest 0.12.23",
  "serde",
  "serde_json",

@@ -1,4 +1,3 @@
-use crate::logger;
 use crate::utils::time_utils;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};

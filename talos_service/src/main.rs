@@ -1,9 +1,10 @@
 use actix_web::{App, HttpServer, get, Responder, HttpResponse};
 use reqwest;
 use serde_json::json;
+use logger::*;
 // mod database;
 mod entity;
-mod logger;
+// mod logger;
 mod routes;
 mod utils;
 use routes::user_route;
@@ -35,10 +36,12 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
         .json(&service)
         .send()
         .await?;
+
     if res.status().is_success() {
         println!("服务注册成功: {:?}", res);
     } else {
-        println!("服务注册失败: {:?}", res);
+        let err = format!("服务注册失败: {:?}", res);
+        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, err)));
     }
 
     Ok(())
@@ -66,11 +69,15 @@ async fn main() -> std::io::Result<()> {
 
     logger::info("Starting server");
 
+    logger::error("error info");
+
+
     tokio::spawn(async move {
         if let Err(e) = register_service().await {
-            eprintln!("服务注册失败: {:?}", e);
-        }
+            logger::error(&format!("服务注册失败: {:#?}", e));
+        } 
     });
+
 
     HttpServer::new(|| App::new().service(hello).service(health))
         .bind("0.0.0.0:8080")?
