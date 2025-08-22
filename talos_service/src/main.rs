@@ -1,46 +1,40 @@
-use actix_web::{App, HttpServer, get, Responder, HttpResponse};
-use reqwest;
-use serde_json::json;
-// mod database;
+use actix_web::{App, HttpResponse, HttpServer, Responder, get};
+use utils::consul;
 mod entity;
-// mod logger;
 mod routes;
-mod utils;
-use routes::user_route;
-
+use std::collections::HashMap;
 
 async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
+    let meta: Option<HashMap<String, String>> = Some(
+        [
+            ("version".to_string(), "1.0.0".to_string()),
+            ("hello_path".to_string(), "/hello".to_string()),
+            ("health_path".to_string(), "/health".to_string()),
+        ]
+        .into_iter()
+        .collect(),
+    );
 
-    let client = reqwest::Client::new();
-    let service = json!({
-        "ID": uuid::Uuid::new_v4().to_string(),
-        "Name": "user_service",
-        "Tags": ["用户服务"],
-        "Port": 8080,
-        "Check": {
-            "HTTP": "http://127.0.0.1:8080/health",
-            "Interval": "10s",
-            "Timeout": "5s"
-        },
-        "Meta": {
-            "version": "1.0.0",
-            "hello_path": "/hello",
-            "health_path": "/health"
+    let service = consul::Service::new(
+        uuid::Uuid::new_v4().to_string(),
+        "user_service".to_string(),
+        vec!["user_service".to_string()],
+        8080,
+        consul::Check::new(
+            "http://127.0.0.1:8080/health".to_string(),
+            "10s".to_string(),
+            "5s".to_string(),
+        ),
+        meta,
+    );
+
+    match service.register("http://127.0.0.1:8500").await {
+        Ok(()) => {
+            logger::info("服务注册成功");
         }
-    });
-
-    // 调用注册服务 API
-    let res = client
-        .put("http://127.0.0.1:8500/v1/agent/service/register")
-        .json(&service)
-        .send()
-        .await?;
-
-    if res.status().is_success() {
-        println!("服务注册成功: {:?}", res);
-    } else {
-        let err = format!("服务注册失败: {:?}", res);
-        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, err)));
+        Err(e) => {
+            return Err(e);
+        }
     }
 
     Ok(())
@@ -68,15 +62,11 @@ async fn main() -> std::io::Result<()> {
 
     logger::info("Starting server");
 
-    logger::error("error info");
-
-
     tokio::spawn(async move {
         if let Err(e) = register_service().await {
             logger::error(&format!("服务注册失败: {:#?}", e));
-        } 
+        }
     });
-
 
     HttpServer::new(|| App::new().service(hello).service(health))
         .bind("0.0.0.0:8080")?
