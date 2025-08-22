@@ -21,6 +21,11 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
             "HTTP": "http://127.0.0.1:8080/health",
             "Interval": "10s",
             "Timeout": "5s"
+        },
+        "Meta": {
+            "version": "1.0.0",
+            "hello_path": "/hello",
+            "health_path": "/health"
         }
     });
 
