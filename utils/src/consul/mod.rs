@@ -35,9 +35,12 @@ pub struct Check {
 }
 
 impl Check {
-
     pub fn new(http: String, interval: String, timeout: String) -> Self {
-        Self { http, interval, timeout }
+        Self {
+            http,
+            interval,
+            timeout,
+        }
     }
 }
 

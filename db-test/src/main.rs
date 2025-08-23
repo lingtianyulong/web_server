@@ -6,7 +6,9 @@ use model_derive::Model as DeriveModel;
 #[derive(DeriveModel, Serialize, Deserialize)]
 #[table_name = "user"]
 struct User {
-    id: i32,
+    // 此处使用 serde 注解, 让属性名与数据库字段名保持一致, 防止属性名与数据库字段名不一致导致插入失败
+    #[serde(rename = "id")]
+    user_id: i32,
     name: String,
     age: i32,
 }
@@ -22,9 +24,9 @@ async fn main() {
     };
 
     let user = User {
-        id: 1,
-        name: "John".to_string(),
-        age: 20,
+        user_id: 3,
+        name: "Lily".to_string(),
+        age: 19,
     };
 
     db_context.insert(&user).await.unwrap();
