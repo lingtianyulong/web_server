@@ -22,6 +22,8 @@ pub struct Service {
     check: Check,
     #[serde(rename = "Meta")]
     meta: Option<HashMap<String, String>>,
+
+    // todo!("其他属性, 后期根据需要进行补充完善");
 }
 
 #[derive(Debug, Serialize, Deserialize)]
