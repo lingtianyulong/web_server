@@ -196,6 +196,13 @@ impl DbContext {
     }
 
     // 查询所有符合条件的对象
+    // 这里对泛型 T 添加了约束条件：
+    // T: Model：T 必须实现你定义的 Model trait。
+    // for<'r> FromRow<'r, sqlx::mysql::MySqlRow>：
+    // T 必须能从 SQLX 的 MySQL 行中构造出来。
+    // for<'r> 是一个 高阶生命周期约束 (HRTB, Higher-Rank Trait Bounds)，表示 无论行数据的生命周期 'r 是什么，T 都能从一行中生成。
+    // Unpin：保证 T 不依赖于被固定在内存中的位置（异步/Pin安全）。
+    // Send + Sync：保证 T 在多线程异步环境中是安全的，可以在任务间传递。
     pub async fn query<T>(&self, where_clause: &str, params: Vec<&Value>) -> Result<Vec<T>, Error>
     where
         T: Model + for<'r> FromRow<'r, sqlx::mysql::MySqlRow> + Unpin + Send + Sync,

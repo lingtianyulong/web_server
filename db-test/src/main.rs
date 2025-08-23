@@ -27,9 +27,9 @@ async fn main() {
         };
 
     let _user = User {
-        user_id: 4,
+        user_id: 5,
         name: "LiLei".to_string(),
-        age: 19,
+        age: 20,
     };
 
     // 查询单个对象
@@ -46,13 +46,13 @@ async fn main() {
 
     // 条件查询
     let mut users = db_context
-        .query::<User>("id = ?", vec![&Value::Number(1.into())])
+        .query::<User>("name = ?", vec![&Value::String("LiLei".to_string())])
         .await
         .unwrap();
     // 按照 age 字段升序排序
     // users.sort_by_key(|u| u.age);
     // 按照 age 字段降序排序
-    // users.sort_by_key(|u| std::cmp::Reverse(u.age));
+    users.sort_by_key(|u| std::cmp::Reverse(u.age));
 
     println!("users: {:?}", users);
 
@@ -71,7 +71,7 @@ async fn main() {
     //     .unwrap();
 
     // 插入对象
-    // db_context.insert(&user).await.unwrap();
+    // db_context.insert(&_user).await.unwrap();
 
     // 更新对象
     // db_context.update(&user, "id").await.unwrap();
