@@ -2,3 +2,4 @@
 /talos_service/logs
 /utils/target
 /model-derive/target
+/db-test/target

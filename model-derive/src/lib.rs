@@ -2,7 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{DeriveInput, Expr, Lit, Meta, parse_macro_input};
 
-#[proc_macro_derive(Model)]
+#[proc_macro_derive(Model, attributes(table_name))]
 pub fn model_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -26,6 +26,7 @@ pub fn model_derive(input: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         impl Model for #name {
+            // 表名
             fn table_name() -> &'static str {
                 #table_name
             }
