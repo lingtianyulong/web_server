@@ -32,9 +32,15 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
     // 先注销, 防止服务重复注册
     let services = consul::Service::get_service("http://127.0.0.1:8500", service_name).await?;
     if !services.is_empty() {
-        let id = services.iter().find(|service| service["Name"].as_str().unwrap_or("user_service") == service_name);
+        let id = services
+            .iter()
+            .find(|service| service["Name"].as_str().unwrap_or("user_service") == service_name);
         if let Some(id) = id {
-            consul::Service::deregister("http://127.0.0.1:8500", id.as_str().unwrap_or("user_service")).await?;
+            consul::Service::deregister(
+                "http://127.0.0.1:8500",
+                id.as_str().unwrap_or("user_service"),
+            )
+            .await?;
         }
     }
 
@@ -46,7 +52,6 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
             return Err(e);
         }
     }
-
     Ok(())
 }
 
