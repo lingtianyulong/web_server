@@ -7,14 +7,14 @@ use utils::times;
 use uuid::Uuid;
 
 // 向数据库存储的用户数据
-#[derive(Debug, DeriveModel, Serialize, Deserialize, FromRow)]
+#[derive(Debug, DeriveModel, Serialize, Deserialize, FromRow, Clone)]
 #[table_name = "user"]
 pub struct User {
     id: String,                         // 用户id, 唯一标识
     user_name: String,                  // 用户名
     password: String,                   // 密码
     sex: String,                        // 性别
-    age: u32,                           // 年龄
+    age: i32,                           // 年龄
     phone: String,                      // 手机号
     email: String,                      // 邮箱
     create_time: NaiveDateTime,         // 创建时间
@@ -27,7 +27,7 @@ pub struct UserResponse {
     user_name: String, // 用户名
     password: String,  // 密码
     sex: String,       // 性别
-    age: u32,          // 年龄
+    age: i32,          // 年龄
     phone: String,     // 手机号
     email: String,     // 邮箱
 }
@@ -38,7 +38,7 @@ impl User {
         user_name: String,
         password: String,
         sex: String,
-        age: u32,
+        age: i32,
         phone: String,
         email: String,
     ) -> Self {
@@ -60,7 +60,7 @@ impl User {
         user_name: String,
         password: String,
         sex: String,
-        age: u32,
+        age: i32,
         phone: String,
         email: String,
         create_time: NaiveDateTime,
@@ -91,11 +91,15 @@ impl User {
         &self.password
     }
 
+    pub fn set_password(&mut self, password: &str) {
+        self.password = password.to_string();
+    }
+
     pub fn get_sex(&self) -> &str {
         &self.sex
     }
 
-    pub fn get_age(&self) -> u32 {
+    pub fn get_age(&self) -> i32 {
         self.age
     }
 

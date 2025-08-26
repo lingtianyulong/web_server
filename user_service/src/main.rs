@@ -3,6 +3,7 @@ use utils::consul;
 mod entity;
 mod managers;
 mod routes;
+use actix_web::Scope;
 use routes::user_route;
 use serde_json::json;
 use std::collections::HashMap;
@@ -13,7 +14,9 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
             ("version".to_string(), "1.0.0".to_string()),
             ("hello_path".to_string(), "/hello".to_string()),
             ("health_path".to_string(), "/health".to_string()),
-            // ("register_path".to_string(), "/register".to_string()),
+            ("register_path".to_string(), "/register".to_string()),
+            ("login_path".to_string(), "/login".to_string()),
+            ("user_exist_path".to_string(), "/user_exist".to_string()),
         ]
         .into_iter()
         .collect(),
@@ -77,6 +80,14 @@ async fn health() -> impl Responder {
     HttpResponse::Ok().body("OK")
 }
 
+fn user_scope() -> Scope {
+    web::scope("/user")
+        .service(user_route::register_user)
+        .service(user_route::login_user)
+        .service(user_route::user_exist)
+        .service(user_route::reset_password)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     if !logger::init("confgs/logger_config.json") {
@@ -104,7 +115,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .service(hello)
             .service(health)
-            // .service(web::scope("/user").service(user_route::register_user))
+            .service(user_scope())
     })
     .bind("0.0.0.0:8080")?
     .run()

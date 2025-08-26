@@ -20,10 +20,11 @@ impl DbManager {
         Ok(Self { db_context })
     }
 
-    pub async fn instance() -> Result<&'static DbManager, Box<dyn std::error::Error + Send + Sync>> {
-        INSTANCE.get_or_try_init(|| async {
-            Self::new().await
-        }).await
+    pub async fn instance() -> Result<&'static DbManager, Box<dyn std::error::Error + Send + Sync>>
+    {
+        INSTANCE
+            .get_or_try_init(|| async { Self::new().await })
+            .await
     }
 
     async fn connect() -> Result<DbContext, Box<dyn std::error::Error + Send + Sync>> {
@@ -115,6 +116,24 @@ impl DbManager {
         T: Model + for<'r> FromRow<'r, sqlx::mysql::MySqlRow> + Unpin + Send + Sync,
     {
         let result = match self.db_context.query(where_clause, params).await {
+            Ok(res) => res,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+        Ok(result)
+    }
+
+    // 判断数据是否存在
+    pub async fn exists<T>(
+        &self,
+        where_clause: &str,
+        params: Vec<&Value>,
+    ) -> Result<bool, sqlx::Error>
+    where
+        T: Model,
+    {
+        let result = match self.db_context.exists::<T>(where_clause, params).await {
             Ok(res) => res,
             Err(e) => {
                 return Err(e);

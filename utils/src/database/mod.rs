@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use serde::Serialize;
 use serde_json::Value;
-use sqlx::{Error, FromRow, MySql, MySqlPool};
+use sqlx::{Error, FromRow, MySql, MySqlPool, Row};
 
 pub trait Model {
     fn table_name() -> &'static str;
@@ -220,6 +220,26 @@ impl DbContext {
             }
         };
         Ok(rows)
+    }
+
+    /// 判断数据是否存在
+    pub async fn exists<T>(&self, where_clause: &str, params: Vec<&Value>) -> Result<bool, Error>
+    where
+        T: Model,
+    {
+        let sql = format!("SELECT EXISTS(SELECT 1 FROM {} WHERE {}) AS result", T::table_name(), where_clause);
+        let mut query = sqlx::query(&sql);
+        for p in params {
+            query = Self::bind_value(query, p);
+        }
+
+        let record = query.fetch_optional(&self.pool_).await;
+
+        match record {
+            Ok(Some(r)) => Ok(r.get::<i8, &str>("result") != 0),
+            _ => Ok(false),
+        }
+
     }
 
     /// 绑定 JSON Value 到 SQL 参数
