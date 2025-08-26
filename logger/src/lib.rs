@@ -46,7 +46,7 @@ fn my_log_format(
 ) -> std::io::Result<()> {
     write!(
         w,
-        "{} [{}] - {} \n",
+        "{} [{}] - {}",
         now.now().format("%Y-%m-%d %H:%M:%S"),
         record.level(),
         &record.args()
