@@ -90,7 +90,8 @@ impl Service {
     pub async fn deregister(url: &str, service_id: &str) -> Result<(), Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();
         let deregister_url = format!("{}/v1/agent/service/deregister/{}", url, service_id);
-        let response = client.delete(deregister_url).send().await?;
+        println!("注销服务地址: {}", deregister_url);
+        let response = client.put(deregister_url).send().await?;
         if response.status().is_success() {
             Ok(())
         } else {
@@ -114,6 +115,7 @@ impl Service {
         let get_service_url = format!("{}/v1/catalog/service/{}?passing", url, service_name);
         let response = client.get(get_service_url).send().await?;
         if response.status().is_success() {
+            println!("获取服务成功, 服务列表: {:?}", response);
             let services: Vec<serde_json::Value> = response.json().await?;
             Ok(services)
         } else {

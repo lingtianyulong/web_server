@@ -1,10 +1,11 @@
-use actix_web::{App, HttpResponse, HttpServer, Responder, get};
+use actix_web::{App, HttpResponse, HttpServer, Responder, get, web};
 use utils::consul;
 mod entity;
-mod routes;
 mod managers;
-use std::collections::HashMap;
+mod routes;
+use routes::user_route;
 use serde_json::json;
+use std::collections::HashMap;
 
 async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
     let meta: Option<HashMap<String, String>> = Some(
@@ -12,6 +13,7 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
             ("version".to_string(), "1.0.0".to_string()),
             ("hello_path".to_string(), "/hello".to_string()),
             ("health_path".to_string(), "/health".to_string()),
+            // ("register_path".to_string(), "/register".to_string()),
         ]
         .into_iter()
         .collect(),
@@ -34,15 +36,18 @@ async fn register_service() -> Result<(), Box<dyn std::error::Error>> {
     // 先注销, 防止服务重复注册
     let services = consul::Service::get_service("http://127.0.0.1:8500", service_name).await?;
     if !services.is_empty() {
-        let id = services
+        println!("服务列表: {:?}", services);
+        let svc = services
             .iter()
-            .find(|service| service["Name"].as_str().unwrap_or("user_service") == service_name);
-        if let Some(id) = id {
-            consul::Service::deregister(
-                "http://127.0.0.1:8500",
-                id.as_str().unwrap_or("user_service"),
-            )
-            .await?;
+            .find(|service| service["ServiceName"].as_str().unwrap_or_default() == service_name);
+        if let Some(svc) = svc {
+            if let Some(service_id) = svc.get("ServiceID").and_then(|v| v.as_str()) {
+                println!("注销服务: {}", service_id);
+                // 调用注销接口
+                consul::Service::deregister("http://127.0.0.1:8500", service_id).await?;
+            } else {
+                println!("找不到 ServiceID, 无法注销");
+            }
         }
     }
 
@@ -89,14 +94,21 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(async move {
         if let Err(e) = register_service().await {
             logger::error(&format!("服务注册失败: {:#?}", e));
+            println!("服务注册失败: {:#?}", e);
+            return;
         }
     });
-    println!("服务注册成功!");
+    println!("服务注册完成!");
 
-    HttpServer::new(|| App::new().service(hello).service(health))
-        .bind("0.0.0.0:8080")?
-        .run()
-        .await?;
+    HttpServer::new(|| {
+        App::new()
+            .service(hello)
+            .service(health)
+            // .service(web::scope("/user").service(user_route::register_user))
+    })
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await?;
 
     logger::info("Server started");
     Ok(())

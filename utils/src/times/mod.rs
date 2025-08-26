@@ -2,6 +2,7 @@ use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
 
 pub fn get_current_time() -> NaiveDateTime {
     let now = Utc::now();
+    // 获取东八区时间
     let offset = FixedOffset::east_opt(8 * 3600).unwrap();
     let datetime: DateTime<FixedOffset> =
         DateTime::from_naive_utc_and_offset(now.naive_local(), offset);
