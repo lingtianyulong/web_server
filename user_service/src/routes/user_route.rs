@@ -50,30 +50,43 @@ async fn register_user(user: web::Json<UserResponse>) -> impl Responder {
 
 // 用户登录
 #[post("/login")]
-async fn login_user(user: web::Json<UserResponse>) -> impl Responder {
-    let new_user = user::User::create_user_from_response(user.into_inner());
-    HttpResponse::Ok().body(new_user.to_json())
-}
+async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
+    // 从输入的 json 中获取 user_name 和 password
+    let Some(json_user_name) = user.get("user_name") else {
+        logger::error("user_name field is missing");
+        return HttpResponse::BadRequest().json(json!({
+            "code": 0,
+            "message": "user_name field is required",
+        }));
+    };
 
-// 判断用户是否存在
-#[post("/user_exist")]
-async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
-    let user_name = match req_body.get("user_name") {
-        Some(name) => match name.as_str() {
-            Some(name_str) => name_str,
-            None => {
-                logger::error("user_name is not a string");
-                return HttpResponse::BadRequest().json(json!({
-                    "code": -1,
-                    "message": "user_name must be a string"
-                }));
-            }
-        },
+    let Some(json_password) = user.get("password") else {
+        logger::error("password field is missing");
+        return HttpResponse::BadRequest().json(json!({
+            "code": 0,
+            "message": "password field is required",
+        }));
+    };
+
+    // 将 user_name 和 password 转换为字符串
+    let user_name = match json_user_name.as_str() {
+        Some(username) => username,
         None => {
-            logger::error("user_name field is missing");
+            logger::error("user_name is not a string");
             return HttpResponse::BadRequest().json(json!({
-                "code": -1,
-                "message": "user_name field is required"
+                "code": 0,
+                "message": "user_name must be a string",
+            }));
+        }
+    };
+
+    let password = match json_password.as_str() {
+        Some(password) => password,
+        None => {
+            logger::error("password is not a string");
+            return HttpResponse::BadRequest().json(json!({
+                "code": 0,
+                "message": "password must be a string",
             }));
         }
     };
@@ -90,79 +103,119 @@ async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
         }
     };
 
-    match db_manager
-        .exists::<user::User>("user_name = ?", vec![&Value::String(user_name.to_string())])
-        .await
-    {
-        Ok(exists) => {
-            if exists {
-                HttpResponse::Ok().json(json!({
-                    "code": 0,
-                    "message": "User exists",
-                    "data": true
-                }))
-            } else {
-                HttpResponse::Ok().json(json!({
-                    "code": 0,
-                    "message": "User not exists",
-                    "data": false
-                }))
-            }
-        }
+    let user = match db_manager.find::<user::User, &str>("user_name", user_name).await {
+        Ok(user) => user,
         Err(e) => {
-            logger::error(&format!("Failed to check user existence: {:#?}", e));
-            HttpResponse::InternalServerError().json(json!({
+            logger::error(&format!("Failed to find user: {:#?}", e));
+            return HttpResponse::InternalServerError().json(json!({
                 "code": -1,
                 "message": "Database operation failed",
                 "data": false
-            }))
+            }));
         }
+    };
+
+    if user.get_password() != password {
+        return HttpResponse::Ok().json(json!({
+            "code": 0,
+            "message": "password is incorrect",
+            "data": false
+        }));
     }
+
+    HttpResponse::Ok().body(user.to_json())
+}
+
+// 判断用户是否存在
+#[post("/user_exist")]
+async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
+    let Some(user_name) = req_body.get("user_name") else {
+        logger::error("user_name field is missing");
+        return HttpResponse::BadRequest().json(json!({
+            "code": 0,
+            "message": "user_name field is required",
+        }));
+    };
+
+    let db_manager = match DbManager::instance().await {
+        Ok(manager) => manager,
+        Err(e) => {
+            logger::error(&format!("Failed to get DbManager instance: {:#?}", e));
+            return HttpResponse::InternalServerError().json(json!({
+                "code": -1,
+                "message": "Database connection failed",
+                "data": false
+            }));
+        }
+    };
+
+    let Ok(exists) = db_manager
+        .exists::<user::User>("user_name = ?", vec![&Value::String(user_name.to_string())])
+        .await
+    else {
+        logger::error("Failed to check user existence");
+        return HttpResponse::InternalServerError().json(json!({
+            "code": -1,
+            "message": "Database operation failed",
+            "data": false
+        }));
+    };
+
+    if exists {
+        HttpResponse::Ok().json(json!({
+            "code": 0,
+            "message": "User exists",
+            "data": true
+        }))
+    } else {
+        HttpResponse::Ok().json(json!({
+            "code": 0,
+            "message": "User not exists",
+            "data": false
+        }))
+    }
+    
 }
 
 // 重置密码
 #[post("/reset_password")]
 async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responder {
     // 获取用户名
-    let user_name = match req_body.get("user_name") {
-        Some(name) => match name.as_str() {
-            Some(name_str) => name_str,
-            None => {
-                logger::error("user_name is not a string");
-                return HttpResponse::BadRequest().json(json!({
-                    "code": -1,
-                    "message": "user_name must be a string"
-                }));
-            }
-        },
+    let Some(json_user_name) = req_body.get("user_name") else {
+        logger::error("user_name field is missing");
+        return HttpResponse::BadRequest().json(json!({
+            "code": 0,
+            "message": "user_name field is required",
+        }));
+    };
+
+    // 获取密码
+    let Some(json_password) = req_body.get("password") else {
+        logger::error("password field is missing");
+        return HttpResponse::BadRequest().json(json!({
+            "code": 0,
+            "message": "password field is required",
+        }));
+    };
+
+    let user_name = match json_user_name.as_str() {
+        Some(username) => username,
         None => {
-            logger::error("user_name field is missing");
+            logger::error("user_name is not a string");
             return HttpResponse::BadRequest().json(json!({
-                "code": -1,
-                "message": "user_name field is required"
+                "code": 0,
+                "message": "user_name must be a string",
             }));
         }
     };
 
-    // 获取密码
-    let password: &str = match req_body.get("password") {
-        Some(password) => match password.as_str() {
-            Some(password_str) => password_str,
-            None => {
-                logger::error("password is not a string");
-                return HttpResponse::BadRequest().json(json!({
-                    "code": -1,
-                    "message": "password must be a string",
-                    "data": false
-                }));
-            }
-        },
+    let password = match json_password.as_str() {
+        Some(password) => password,
         None => {
-            logger::error("password field is missing");
+            logger::error("password is not a string");
             return HttpResponse::BadRequest().json(json!({
-                "code": -1,
-                "message": "password field is required",
-                "data": false
+                "code": 0,
+                "message": "password must be a string",
             }));
         }
     };
