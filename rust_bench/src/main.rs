@@ -73,8 +73,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => client.get(&url).send().await,
             };
 
-            // println!("resp: {:?}", resp);
-
             let elapsed_ms = req_start.elapsed().as_secs_f64() * 1000.0;
 
             let mut st = stats.lock().await;
