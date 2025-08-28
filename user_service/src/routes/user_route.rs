@@ -129,12 +129,23 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
 // 判断用户是否存在
 #[post("/user_exist")]
 async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
-    let Some(user_name) = req_body.get("user_name") else {
+    let Some(json_user_name) = req_body.get("user_name") else {
         logger::error("user_name field is missing");
         return HttpResponse::BadRequest().json(json!({
             "code": 0,
             "message": "user_name field is required",
         }));
+    };
+
+    let user_name = match json_user_name.as_str() {
+        Some(username) => username,
+        None => {
+            logger::error("user_name is not a string");
+            return HttpResponse::BadRequest().json(json!({
+                "code": 0,
+                "message": "user_name must be a string",
+            }));
+        }
     };
 
     let db_manager = match DbManager::instance().await {

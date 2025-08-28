@@ -3,3 +3,4 @@
 /utils/target
 /model-derive/target
 /db-test/target
+/rust_bench/target
