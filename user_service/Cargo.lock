@@ -2603,25 +2603,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "talos_service"
-version = "0.1.0"
-dependencies = [
- "actix-web",
- "chrono",
- "consul",
- "dotenv",
- "logger",
- "model-derive",
- "reqwest 0.12.23",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "utils",
- "uuid",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2922,6 +2903,25 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+]
+
+[[package]]
+name = "user_service"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "chrono",
+ "consul",
+ "dotenv",
+ "logger",
+ "model-derive",
+ "reqwest 0.12.23",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "utils",
+ "uuid",
 ]
 
 [[package]]
