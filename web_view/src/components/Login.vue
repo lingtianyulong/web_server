@@ -55,6 +55,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 
@@ -80,10 +81,10 @@ const handleLogin = async () => {
     await new Promise(resolve => setTimeout(resolve, 1500))
     
     // 登录成功后跳转到主页
-    // alert('登录成功！')
+    ElMessage.success('登录成功！')
     router.push('/home')
   } catch (error) {
-    alert('登录失败，请检查用户名和密码')
+    ElMessage.error('登录失败，请检查用户名和密码')
   } finally {
     loading.value = false
   }
