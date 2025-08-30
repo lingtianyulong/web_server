@@ -3,6 +3,7 @@ use utils::consul;
 mod entity;
 mod managers;
 mod routes;
+use actix_cors::Cors;
 use actix_web::Scope;
 use routes::user_route;
 use serde_json::json;
@@ -90,7 +91,7 @@ fn user_scope() -> Scope {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    if !logger::init("confgs/logger_config.json") {
+    if !logger::init("configs/logger_config.json") {
         eprintln!("Failed to initialize logger");
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
@@ -113,6 +114,12 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(|| {
         App::new()
+            .wrap(
+                Cors::default()
+                    .allow_any_origin() // 允许所有源访问
+                    .allow_any_header() // 允许所有头部访问
+                    .allow_any_method() // 允许所有方法访问
+            )
             .service(hello)
             .service(health)
             .service(user_scope())

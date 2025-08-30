@@ -174,7 +174,6 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { ArrowRight } from '@element-plus/icons-vue'
 
 // 用户数据类型
 interface User {

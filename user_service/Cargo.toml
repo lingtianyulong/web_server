@@ -10,7 +10,7 @@ logger = { path = "../logger" }
 utils = { path = "../utils" }
 model-derive = { path = "../model-derive" }
 
-actix-web = "4.11.0"
+actix-web = "4"
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.140"
 uuid = { version = "1.13.0", features = ["v4"] }
@@ -20,3 +20,4 @@ dotenv = "0.15.0"
 consul = "0.4.2"
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "mysql", "macros", "migrate", "chrono", "uuid"] }
 reqwest = { version = "0.12.23", features = ["json", "rustls-tls"] }
+actix-cors = "0.7"

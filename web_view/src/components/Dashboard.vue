@@ -139,7 +139,6 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowRight } from '@element-plus/icons-vue'
 import { ref, reactive } from 'vue'
 
 // 统计数据

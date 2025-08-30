@@ -11,7 +11,7 @@
           <label for="username">用户名</label>
           <input
             id="username"
-            v-model="form.username"
+            v-model="form.user_name"
             type="text"
             placeholder="请输入用户名"
             required
@@ -29,14 +29,14 @@
           />
         </div>
         
-        <div class="form-group checkbox-group">
+        <!-- <div class="form-group checkbox-group">
           <input
             id="remember"
             v-model="form.remember"
             type="checkbox"
           />
           <label for="remember">记住我</label>
-        </div>
+        </div> -->
         
         <button type="submit" class="login-btn" :disabled="loading">
           {{ loading ? '登录中...' : '登录' }}
@@ -56,39 +56,104 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { authService } from '../services/auth'
+import type { LoginRequest } from '../services/auth'
 
 const router = useRouter()
 
 const form = reactive({
-  username: '',
+  user_name: '',
   password: '',
-  remember: false
+  // remember: false
 })
 
 const loading = ref(false)
 
 const handleLogin = async () => {
-  if (!form.username || !form.password) {
-    alert('请填写完整的登录信息')
-    return
-  }
+  // if (!form.user_name || !form.password) {
+  //   ElMessage.warning('请填写完整的登录信息')
+  //   return
+  // }
   
   loading.value = true
   
   try {
-    // 这里可以添加实际的登录API调用
-    // 示例：模拟登录过程
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // 构建登录请求数据
+    const loginData: LoginRequest = {
+      user_name: form.user_name,
+      password: form.password,
+      // remember: form.remember
+    }
+
+    // 调用封装后的登录服务
+    const response = await authService.login(loginData)
     
-    // 登录成功后跳转到主页
-    ElMessage.success('登录成功！')
-    router.push('/home')
-  } catch (error) {
-    ElMessage.error('登录失败，请检查用户名和密码')
+    // 检查登录结果
+    if (response.code === 200) {
+      // 保存用户信息
+      if (response.data?.user) {
+        authService.setUserInfo(response.data.user)
+      }
+      
+      // 登录成功提示
+      ElMessage.success('登录成功！')
+      
+      // 跳转到主页
+      router.push('/home/dashboard')
+    } else {
+      throw new Error(response.message || '登录失败')
+    }
+  } catch (error: unknown) {
+    console.error('Login error:', error)
+    
+    let errorMessage = '登录失败，请稍后重试'
+    
+    // 处理不同类型的错误
+    if (error && typeof error === 'object' && 'status' in error) {
+      // 处理 HTTP 错误
+      const httpError = error as { status: number; message: string }
+      switch (httpError.status) {
+        case 401:
+          errorMessage = '用户名或密码错误'
+          break
+        case 403:
+          errorMessage = '账户已被禁用'
+          break
+        case 404:
+          errorMessage = '用户不存在'
+          break
+        case 500:
+          errorMessage = '服务器错误，请稍后重试'
+          break
+        default:
+          errorMessage = httpError.message || '登录失败'
+      }
+    } else if (error instanceof Error) {
+      if (error.message.includes('timeout')) {
+        errorMessage = '请求超时，请检查网络连接'
+      } else if (error.message.includes('fetch')) {
+        errorMessage = '网络连接失败，请检查服务器状态'
+      } else {
+        errorMessage = error.message
+      }
+    }
+    
+    ElMessage.error(errorMessage)
   } finally {
     loading.value = false
   }
 }
+
+// 页面加载时检查是否已登录
+const checkAuthStatus = () => {
+  if (authService.isAuthenticated()) {
+    // 如果已经登录，直接跳转到主页
+    router.push('/home/dashboard')
+  }
+}
+
+// 组件挂载时检查登录状态
+checkAuthStatus()
 </script>
 
 <style scoped>

@@ -95,21 +95,25 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
         Ok(manager) => manager,
         Err(e) => {
             logger::error(&format!("Failed to get DbManager instance: {:#?}", e));
-            return HttpResponse::InternalServerError().json(json!({
-                "code": -1,
+            return HttpResponse::Ok().json(json!({
+                "code": 200,
                 "message": "Database connection failed",
                 "data": false
             }));
         }
     };
 
-    let user = match db_manager.find::<user::User, &str>("user_name", user_name).await {
+    let user = match db_manager
+        .find::<user::User, &str>("user_name", user_name)
+        .await
+    {
         Ok(user) => user,
         Err(e) => {
+            let err_msg = format!("Failed to find user: {:#?}", user_name);
             logger::error(&format!("Failed to find user: {:#?}", e));
             return HttpResponse::InternalServerError().json(json!({
                 "code": -1,
-                "message": "Database operation failed",
+                "message": err_msg,
                 "data": false
             }));
         }
@@ -123,7 +127,11 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
         }));
     }
 
-    HttpResponse::Ok().body(user.to_json())
+    // HttpResponse::Ok().body(user.to_json())
+    HttpResponse::Ok().json(json!({
+        "code": 200,
+        "data": user.to_json()
+    }))
 }
 
 // 判断用户是否存在
@@ -185,7 +193,6 @@ async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
             "data": false
         }))
     }
-    
 }
 
 // 重置密码
@@ -243,7 +250,10 @@ async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responde
         }
     };
 
-    let user: Option<user::User> = match db_manager.find::<user::User, &str>("user_name", user_name).await {
+    let user: Option<user::User> = match db_manager
+        .find::<user::User, &str>("user_name", user_name)
+        .await
+    {
         Ok(user) => Some(user),
         Err(e) => {
             let err_msg = format!("Failed to find user: {:#?}", e);
@@ -267,7 +277,7 @@ async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responde
 
     let mut user_obj = user.unwrap();
     user_obj.set_password(password);
-    
+
     let result = db_manager.update(&user_obj, "user_name").await;
     if result.is_err() {
         logger::error("Failed to update password");
@@ -283,5 +293,4 @@ async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responde
         "message": "password reset success",
         "data": true
     }))
-
 }
