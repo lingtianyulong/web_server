@@ -4,3 +4,5 @@
 /model-derive/target
 /db-test/target
 /rust_bench/target
+/web_view/.vscode
+/web_view/node_modules
