@@ -16,7 +16,7 @@
         <template #title>数据统计</template>
       </el-menu-item>
 
-      <el-menu-item index="/users">
+      <el-menu-item index="/home/users">
         <el-icon><User /></el-icon>
         <template #title>用户管理</template>
       </el-menu-item>

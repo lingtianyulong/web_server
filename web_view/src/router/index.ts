@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../components/Login.vue'
 import Home from '../components/Home.vue'
 import Dashboard from '../components/Dashboard.vue'
+import UserManagement from '../components/UserManagement.vue'
 
 const routes = [
   {
@@ -31,6 +32,15 @@ const routes = [
         component: Dashboard,
         meta: {
           title: '数据统计',
+          requiresAuth: true
+        }
+      },
+      {
+        path: 'users',
+        name: 'UserManagement',
+        component: UserManagement,
+        meta: {
+          title: '用户管理',
           requiresAuth: true
         }
       }

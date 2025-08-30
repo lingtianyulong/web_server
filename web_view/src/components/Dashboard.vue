@@ -1,10 +1,8 @@
 <template>
   <div class="dashboard-container">
-    <div class="dashboard-header">
-      <h1>数据统计</h1>
-      <p>系统运行数据总览</p>
+    <div>
+        <h3>数据统计</h3>
     </div>
-
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <div class="stat-card">
@@ -141,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowRight } from '@element-plus/icons-vue'
 import { ref, reactive } from 'vue'
 
 // 统计数据
@@ -195,26 +194,16 @@ const recentActivities = ref([
 
 <style scoped>
 .dashboard-container {
-  padding: 24px;
   background: #f5f5f5;
   min-height: 100%;
 }
 
-.dashboard-header {
-  margin-bottom: 24px;
-}
-
-.dashboard-header h1 {
-  margin: 0 0 8px 0;
-  color: #303133;
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.dashboard-header p {
+.breadcrumb {
+  background: white;
+  padding: 12px 24px;
   margin: 0;
-  color: #909399;
-  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #ebeef5;
 }
 
 /* 统计卡片网格 */
@@ -222,7 +211,7 @@ const recentActivities = ref([
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 24px;
-  margin-bottom: 24px;
+  margin: 24px 24px 24px 24px;
 }
 
 .stat-card {
@@ -296,7 +285,7 @@ const recentActivities = ref([
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 24px;
-  margin-bottom: 24px;
+  margin: 0 24px 24px 24px;
 }
 
 .chart-card {
@@ -415,6 +404,7 @@ const recentActivities = ref([
   border-radius: 8px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  margin: 0 24px 24px 24px;
 }
 
 .section-header {
@@ -495,6 +485,17 @@ const recentActivities = ref([
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .breadcrumb {
+    padding: 12px 16px;
+  }
+  
+  .stats-grid,
+  .charts-grid,
+  .activity-section {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+  
   .charts-grid {
     grid-template-columns: 1fr;
   }
