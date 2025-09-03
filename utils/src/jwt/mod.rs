@@ -5,8 +5,8 @@ use std::env;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    sub: String,        // subject, 一般为用户 id
-    exp: usize,         // 过期时间, 单位为秒
+    pub sub: String,        // subject, 一般为用户 id
+    pub exp: usize,         // 过期时间, 单位为秒
 }
 
 pub fn generate_token(payload: Claims) -> Result<String, jsonwebtoken::errors::Error> {
