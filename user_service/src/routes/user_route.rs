@@ -2,8 +2,10 @@ use crate::entity::user;
 use crate::entity::user::UserResponse;
 use crate::managers::dbmanager::DbManager;
 use actix_web::{HttpResponse, Responder, post, web};
+use chrono::Utc;
 use logger;
 use serde_json::{Value, json};
+use utils::jwt;
 
 // 注册用户
 #[post("/register")]
@@ -12,7 +14,11 @@ async fn register_user(user: web::Json<UserResponse>) -> impl Responder {
     let new_user = user::User::create_user_from_response(inner_user);
     if new_user.get_user_name().is_empty() || new_user.get_password().is_empty() {
         logger::error("User name or password is empty");
-        return HttpResponse::BadRequest().body("User name or password is empty");
+        return HttpResponse::BadRequest().json(json!({
+            "code": 0,
+            "message": "User name or password is empty",
+            "data": false
+        }));
     }
 
     let db_manager = match DbManager::instance().await {
@@ -39,7 +45,7 @@ async fn register_user(user: web::Json<UserResponse>) -> impl Responder {
         }
         Err(e) => {
             logger::error(&format!("Failed to create user: {:#?}", e));
-            HttpResponse::Ok().json(json!({
+            HttpResponse::InternalServerError().json(json!({
                 "code": 0,
                 "message": "User register failed",
                 "data": false
@@ -84,7 +90,7 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
         Some(password) => password,
         None => {
             logger::error("password is not a string");
-            return HttpResponse::BadRequest().json(json!({
+            return HttpResponse::Ok().json(json!({
                 "code": 0,
                 "message": "password must be a string",
             }));
@@ -95,8 +101,8 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
         Ok(manager) => manager,
         Err(e) => {
             logger::error(&format!("Failed to get DbManager instance: {:#?}", e));
-            return HttpResponse::Ok().json(json!({
-                "code": 200,
+            return HttpResponse::InternalServerError().json(json!({
+                "code": -1,
                 "message": "Database connection failed",
                 "data": false
             }));
@@ -111,7 +117,7 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
         Err(e) => {
             let err_msg = format!("Failed to find user: {:#?}", user_name);
             logger::error(&format!("Failed to find user: {:#?}", e));
-            return HttpResponse::InternalServerError().json(json!({
+            return HttpResponse::BadRequest().json(json!({
                 "code": -1,
                 "message": err_msg,
                 "data": false
@@ -127,10 +133,25 @@ async fn login_user(user: web::Json<serde_json::Value>) -> impl Responder {
         }));
     }
 
+    let token = match jwt::generate_token(jwt::Claims {
+        sub: user.get_user_id().to_string(),
+        exp: (Utc::now() + chrono::Duration::hours(8)).timestamp() as usize + 3600,
+    }) {
+        Ok(token) => token,
+        Err(e) => {
+            logger::error(&format!("Failed to generate token: {:#?}", e));
+            return HttpResponse::InternalServerError().json(json!({
+                "code": -1,
+                "message": "Failed to generate token",
+                "data": false
+            }));
+        }
+    };
+
     // HttpResponse::Ok().body(user.to_json())
     HttpResponse::Ok().json(json!({
         "code": 200,
-        "data": user.to_json()
+        "token": token
     }))
 }
 
@@ -161,7 +182,7 @@ async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
         Err(e) => {
             logger::error(&format!("Failed to get DbManager instance: {:#?}", e));
             return HttpResponse::InternalServerError().json(json!({
-                "code": -1,
+                "code": 0,
                 "message": "Database connection failed",
                 "data": false
             }));
@@ -174,7 +195,7 @@ async fn user_exist(req_body: web::Json<serde_json::Value>) -> impl Responder {
     else {
         logger::error("Failed to check user existence");
         return HttpResponse::InternalServerError().json(json!({
-            "code": -1,
+            "code": 0,
             "message": "Database operation failed",
             "data": false
         }));
@@ -258,8 +279,8 @@ async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responde
         Err(e) => {
             let err_msg = format!("Failed to find user: {:#?}", e);
             logger::error(&err_msg.as_str());
-            return HttpResponse::InternalServerError().json(json!({
-                "code": -1,
+            return HttpResponse::BadRequest().json(json!({
+                "code": 0,
                 "message": err_msg.as_str(),
                 "data": false
             }));
@@ -268,8 +289,8 @@ async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responde
 
     if user.is_none() {
         logger::error("user not found");
-        return HttpResponse::Ok().json(json!({
-            "code": 0,
+        return HttpResponse::BadRequest().json(json!({
+            "code": -1,
             "message": "user not found",
             "data": false
         }));
@@ -281,7 +302,7 @@ async fn reset_password(req_body: web::Json<serde_json::Value>) -> impl Responde
     let result = db_manager.update(&user_obj, "user_name").await;
     if result.is_err() {
         logger::error("Failed to update password");
-        return HttpResponse::Ok().json(json!({
+        return HttpResponse::InternalServerError().json(json!({
             "code": -1,
             "message": "password reset failed",
             "data": false

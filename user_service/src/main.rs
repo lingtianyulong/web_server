@@ -118,7 +118,7 @@ async fn main() -> std::io::Result<()> {
                 Cors::default()
                     .allow_any_origin() // 允许所有源访问
                     .allow_any_header() // 允许所有头部访问
-                    .allow_any_method() // 允许所有方法访问
+                    .allow_any_method(), // 允许所有方法访问
             )
             .service(hello)
             .service(health)
