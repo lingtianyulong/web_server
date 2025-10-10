@@ -1,14 +1,16 @@
 use flexi_logger::{Cleanup, Criterion, Logger, Naming, WriteMode, LoggerHandle};
-use log::{error, info, warn};
+use log::{error, info, warn, Level, debug, trace};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::io::{ Write };
 use std::path::Path;
 use std::sync::Once;
 use once_cell::sync::OnceCell;
+use tokio::sync::mpsc::{self, Sender};
 
 static INIT_LOGGER: Once = Once::new();
 static LOGGER_HANDLE: OnceCell<LoggerHandle> = OnceCell::new();
+static LOGGER_SENDER: OnceCell<Sender<(Level,String)>> = OnceCell::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 struct LoggerConfig {
@@ -47,7 +49,7 @@ fn my_log_format(
     write!(
         w,
         "{} [{}] - {}",
-        now.now().format("%Y-%m-%d %H:%M:%S"),
+        now.now().format("%Y-%m-%d %H:%M:%S.%3f"),
         record.level(),
         &record.args()
     )
@@ -116,22 +118,82 @@ pub fn init(cfg_path: &str) -> bool {
                 .unwrap();
 
             let _ = LOGGER_HANDLE.set(logger_handle);
+
+            let (tx, mut rx) = mpsc::channel::<(Level,String)>(1024);
+            let _ = LOGGER_SENDER.set(tx).unwrap();
+
+            // 后台任务消费日志
+            tokio::spawn(async move {
+                while let Some((level, msg)) = rx.recv().await {
+                    match level {
+                        Level::Error => error!("{}", msg),
+                        Level::Warn => warn!("{}", msg),
+                        Level::Info => info!("{}", msg),
+                        Level::Debug => debug!("{}", msg),
+                        Level::Trace => trace!("{}", msg),
+                    }
+                }
+            });
+
+
         });
     });
 
     result.is_ok()
 }
 
+/// 异步发送日志到通道
+async fn log_async(level: Level, msg: &str) {
+    if let Some(tx) = LOGGER_SENDER.get() {
+        let _ = tx.send((level, msg.to_string())).await;
+    }
+}
+
+// 接口内部进行异步处理
 pub fn info(msg: &str) {
-    info!("{}", msg);
+    if let Some(_tx) = LOGGER_SENDER.get() {
+        let message = msg.to_string();
+        tokio::spawn(async move {
+            log_async(Level::Info, &message).await;
+        });
+    }
 }
 
 pub fn warn(msg: &str) {
-    warn!("{}", msg);
+    if let Some(_tx) = LOGGER_SENDER.get() {
+        let message = msg.to_string();
+        tokio::spawn(async move {
+            log_async(Level::Warn, &message).await;
+        });
+    }
 }
 
 pub fn error(msg: &str) {
-    error!("{}", msg);
+    // error!("{}", msg);
+    if let Some(_tx) = LOGGER_SENDER.get() {
+        let message = msg.to_string();
+        tokio::spawn(async move {
+            log_async(Level::Error, &message).await;
+        });
+    }
+}
+
+pub fn debug(msg: &str) {
+    if let Some(_tx) = LOGGER_SENDER.get() {
+        let message = msg.to_string();
+        tokio::spawn(async move {
+            log_async(Level::Debug, &message).await;
+        });
+    }
+}
+
+pub fn trace(msg: &str) {
+    if let Some(_tx) = LOGGER_SENDER.get() {
+        let message = msg.to_string();
+        tokio::spawn(async move {
+            log_async(Level::Trace, &message).await;
+        });
+    }
 }
 
 /**
