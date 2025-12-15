@@ -1,8 +1,0 @@
-/talos_service/target
-/talos_service/logs
-/utils/target
-/model-derive/target
-/db-test/target
-/rust_bench/target
-/web_view/.vscode
-/web_view/node_modules
