@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 logger = { path = "../logger" }
+diesel = { version = "2.3", features = ["mysql", "r2d2"] }

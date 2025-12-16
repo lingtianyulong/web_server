@@ -1,3 +1,5 @@
 [env]
 LOG_SAVE_PATH = "logs"
 LOG_LEVEL = "info"
+
+DATABASE_URL = "mysql://root:123456@localhost/talos"
