@@ -1,0 +1,3 @@
+[env]
+LOG_SAVE_PATH = "logs"
+LOG_LEVEL = "info"
