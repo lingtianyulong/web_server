@@ -1,1 +1,2 @@
-use crate::schema::users;
+pub mod entity;
+pub mod schema;

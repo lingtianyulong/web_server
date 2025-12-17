@@ -5,4 +5,10 @@ edition = "2024"
 
 [dependencies]
 logger = { path = "../logger" }
-diesel = { version = "2.3", features = ["mysql", "r2d2"] }
+utils = { path = "../utils" }
+
+diesel = { version = "2.3", features = ["mysql", "r2d2", "chrono"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.48", features = ["full"] }
