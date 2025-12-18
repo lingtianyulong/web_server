@@ -187,10 +187,10 @@ impl UserDb {
     pub async fn delete_async(user_id: i64) -> Result<usize, Box<dyn Error>> {
         let db = Self::try_instance()?;
         let pool = db.pool.clone();
-        let user_id = user_id;
+        
         let result = tokio::task::spawn_blocking(move || -> Result<usize, Box<dyn Error + Send + Sync>> {
-            let mut conn = pool.get()?;
-            let delete_time = time_util::now()?;
+            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            let delete_time = time_util::now().map_err(|e| e.to_string())?;
             let res = diesel::update(users::table)
                 .filter(users::id.eq(user_id))
                 .set((users::unregistered.eq(1), users::delete_time.eq(delete_time)))
@@ -204,4 +204,79 @@ impl UserDb {
         result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
     }
 
+    /// 根据用户ID获取用户
+    /// @param user_id 用户ID
+    /// @return 用户信息
+    pub fn get_user_by_id(user_id: i64) -> Result<User, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let mut conn = db.pool.get()?;
+        let user = users::table.filter(users::id.eq(user_id)).first(&mut conn)?;
+        Ok(user)
+    }
+
+    /// 根据用户ID获取用户, 异步方式（静态方法）
+    /// @param user_id 用户ID
+    /// @return 用户信息
+    pub async fn get_user_by_id_async(user_id: i64) -> Result<User, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let pool = db.pool.clone();
+        let result = tokio::task::spawn_blocking(move || -> Result<User, Box<dyn Error + Send + Sync>> {
+            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            let user = users::table.filter(users::id.eq(user_id)).first(&mut conn)?;
+            Ok(user)
+        })
+        .await
+        .map_err(|e| -> Box<dyn Error> { format!("get_user_by_id_async error: {}", e).into() })?;
+
+        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
+    }
+
+    /// 根据用户名获取用户
+    /// @param user_name 用户名
+    /// @return 用户信息
+    pub fn get_user_by_user_name(user_name: &str) -> Result<User, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let mut conn = db.pool.get()?;
+        let user = users::table.filter(users::user_name.eq(user_name)).first(&mut conn)?;
+        Ok(user)
+    }
+
+    pub async fn get_user_by_user_name_async(user_name: &str) -> Result<User, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let pool = db.pool.clone();
+        let name = user_name.to_string();
+        let result = tokio::task::spawn_blocking(move || -> Result<User, Box<dyn Error + Send + Sync>> {
+            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            let user = users::table.filter(users::user_name.eq(name)).first(&mut conn)?;
+            Ok(user)
+        })
+        .await
+        .map_err(|e| -> Box<dyn Error> { format!("get_user_by_user_name_async error: {}", e).into() })?;
+
+        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
+    }
+
+    /// 获取所有用户
+    /// @return 用户列表
+    pub fn get_all_users() -> Result<Vec<User>, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let mut conn = db.pool.get()?;
+        let users = users::table.load(&mut conn)?;
+        Ok(users)
+    }
+
+    /// 获取所有用户, 异步方式（静态方法）
+    /// @return 用户列表
+    pub async fn get_all_users_async() -> Result<Vec<User>, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let pool = db.pool.clone();
+        let result = tokio::task::spawn_blocking(move || -> Result<Vec<User>, Box<dyn Error + Send + Sync>> {
+            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            let users = users::table.load(&mut conn)?;
+            Ok(users)
+        })
+        .await
+        .map_err(|e| -> Box<dyn Error> { format!("get_all_users_async error: {}", e).into() })?;
+        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
+    }
 }
