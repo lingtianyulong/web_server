@@ -169,7 +169,7 @@ impl UserDb {
 
     /// 删除用户（逻辑删除，将 unregistered 设置为 1）
     /// @param user_id 用户ID
-    /// @return 更新的行数
+    /// @return 删除的行数
     pub fn delete(user_id: i64) -> Result<usize, Box<dyn Error>> {
         let db = Self::try_instance()?;
         let mut conn = db.pool.get()?;
@@ -180,4 +180,28 @@ impl UserDb {
             .execute(&mut conn)?;
         Ok(res)
     }
+
+    /// 删除用户, 异步方式（静态方法）
+    /// @param user_id 用户ID
+    /// @return 删除的行数
+    pub async fn delete_async(user_id: i64) -> Result<usize, Box<dyn Error>> {
+        let db = Self::try_instance()?;
+        let pool = db.pool.clone();
+        let user_id = user_id;
+        let result = tokio::task::spawn_blocking(move || -> Result<usize, Box<dyn Error + Send + Sync>> {
+            let mut conn = pool.get()?;
+            let delete_time = time_util::now()?;
+            let res = diesel::update(users::table)
+                .filter(users::id.eq(user_id))
+                .set((users::unregistered.eq(1), users::delete_time.eq(delete_time)))
+                .execute(&mut conn)
+                .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
+            Ok(res)
+        })
+        .await
+        .map_err(|e| -> Box<dyn Error> { format!("delete_async error: {}", e).into() })?;
+
+        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
+    }
+
 }
