@@ -1,13 +1,13 @@
-use crate::user_entity::entity::*;
-use crate::user_entity::schema::users;
-use diesel::prelude::*;
-use diesel::r2d2::{self, ConnectionManager};
+use crate::entity::{user::*, user_dto::UserDto};
 use logger;
 use std::error::Error;
 use std::sync::OnceLock;
+use sea_orm::{ 
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, 
+    EntityTrait, QueryFilter, Statement, ColumnTrait
+};
+use sea_orm::ActiveValue::Set;
 use utils::time_util;
-
-pub type DbPool = r2d2::Pool<ConnectionManager<MysqlConnection>>;
 
 /// 全局单例 UserDb 实例（线程安全）
 /// 使用标准库的 OnceLock 保证初始化只执行一次且线程安全
@@ -15,22 +15,21 @@ static USER_DB: OnceLock<UserDb> = OnceLock::new();
 
 #[allow(dead_code)]
 pub struct UserDb {
-    pool: DbPool,
+    conn: DatabaseConnection,
 }
 
 #[allow(dead_code)]
 impl UserDb {
     /// 初始化全局 UserDb 单例，只能调用一次
     /// 应该在应用启动时调用
-    pub fn init() -> Result<(), Box<dyn Error>> {
+    pub async fn init() -> Result<(), Box<dyn Error>> {
         logger::info("Initialize Database Connection Pool.");
         let database_url = std::env::var("DATABASE_URL")?;
-        let manager = ConnectionManager::<MysqlConnection>::new(database_url);
-        let pool = r2d2::Pool::builder().max_size(10).build(manager)?;
+        let mut opt = ConnectOptions::new(database_url);
+        opt.max_connections(10).min_connections(5);
+        let db = Database::connect(opt).await?;
 
-        let db = Self { pool };
-        USER_DB.set(db).map_err(|_| "UserDb already initialized")?;
-
+        USER_DB.set(UserDb { conn:db }).map_err(|_| "UserDb already initialized")?;
         logger::info("Database Connection Pool Initialized.");
         Ok(())
     }
@@ -53,230 +52,103 @@ impl UserDb {
         Ok(instance)
     }
 
+    pub fn db(&self) -> &DatabaseConnection {
+        &self.conn
+    }
+
     /// 检查数据库连接是否正常（静态方法）
     /// @return true 连接正常，false 连接异常
-    pub fn connected() -> Result<bool, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        diesel::sql_query("SELECT 1").execute(&mut conn)?;
-        Ok(true)
+    pub async fn connected() -> Result<bool, Box<dyn Error>> {
+        let instance = Self::try_instance()?;
+        let db = instance.db();
+        let stmt = Statement::from_string(db.get_database_backend(), "SELECT 1");
+        let res = db.query_one(stmt).await?;
+        match res {
+            Some(_) => Ok(true),
+            None => Err("Database connection check failed".into()),
+        }
     }
 
-    /// 获取数据库连接池引用（静态方法）
-    /// @return 数据库连接池引用
-    pub fn pool() -> Result<&'static DbPool, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        Ok(&db.pool)
-    }
-
-    /// 插入用户, 同步方式（静态方法）
-    /// @param user 用户信息, 原 NewUser 中有生命周期参数,
-    ///             在使用 &NewUser 作为参数类型时，
-    ///             Rust 编译器无法自动推断这个生命周期参数，
-    ///             必须显式标注,'_ 是匿名生命周期占位符，
-    ///             表示让编译器自动推断生命周期，但明确告知这里需要生命周期参数
-    /// @return 插入的行数
-    pub fn insert(user: &NewUser<'_>) -> Result<usize, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        let res = diesel::insert_into(users::table)
-            .values(user)
-            .execute(&mut conn)?;
-        Ok(res)
-    }
-
-    /// 插入用户, 异步方式（静态方法）
-    /// @param user 用户信息
-    /// @return 插入的行数
-    pub async fn insert_async(user: &NewUser<'_>) -> Result<usize, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        // pool clone 只是一个 Arc, 不会产生效率问题
-        let pool = db.pool.clone();
-        let user_name = user.user_name.to_string();
-        let password = user.password.to_string();
-        let create_time = user.create_time;
-        let unregistered = user.unregistered;
-
-        // 使用 tokio::task::spawn_blocking 将阻塞操作放入新线程中执行
-        let result =
-            tokio::task::spawn_blocking(move || -> Result<usize, Box<dyn Error + Send + Sync>> {
-                let mut conn = pool
-                    .get()
-                    .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-                let new_user = NewUser {
-                    user_name: &user_name,
-                    password: &password,
-                    create_time,
-                    unregistered,
-                };
-                let res = diesel::insert_into(users::table)
-                    .values(&new_user)
-                    .execute(&mut conn)
-                    .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-                Ok(res)
-            })
-            .await
-            .map_err(|e| -> Box<dyn Error> { format!("insert_async error: {}", e).into() })?;
-
-        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
-    }
-
-    /// 更新用户, 同步方式（静态方法）
-    /// @param user 用户信息
-    /// @return 更新的行数
-    pub fn update(user: &UpdateUser<'_>) -> Result<usize, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        let res = diesel::update(users::table)
-            .set(user)
-            .execute(&mut conn)?;
-        Ok(res)
-    }
-
-    /// 更新用户, 异步方式（静态方法）
-    /// @param user 用户信息
-    /// @return 更新的行数
-    pub async fn update_async(user: &UpdateUser<'_>) -> Result<usize, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        // pool clone 只是一个 Arc, 不会产生效率问题
-        let pool = db.pool.clone();
-        let user_name = user.user_name.to_string();
-        let password = user.password.to_string();
-        let update_time = user.update_time;
-        let unregistered = user.unregistered;
-
-        let result = tokio::task::spawn_blocking(move || -> Result<usize, Box<dyn Error + Send + Sync>> {
-            let mut conn = pool
-                .get()
-                .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            let update_user = UpdateUser {
-                user_name: &user_name,
-                password: &password,
-                update_time,
-                unregistered,
-            };
-            let res = diesel::update(users::table)
-                .set(&update_user)
-                .execute(&mut conn)
-                .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            Ok(res)
-        })
-        .await
-        .map_err(|e| -> Box<dyn Error> { format!("update_async error: {}", e).into() })?;
-
-        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
-    }
-
-    /// 删除用户（逻辑删除，将 unregistered 设置为 1）
-    /// @param user_id 用户ID
-    /// @return 删除的行数
-    pub fn delete(user_id: i64) -> Result<usize, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        let delete_time = time_util::now()?;
-        let res = diesel::update(users::table)
-            .filter(users::id.eq(user_id))
-            .set((users::unregistered.eq(1), users::delete_time.eq(delete_time)))
-            .execute(&mut conn)?;
-        Ok(res)
-    }
-
-    /// 删除用户, 异步方式（静态方法）
-    /// @param user_id 用户ID
-    /// @return 删除的行数
-    pub async fn delete_async(user_id: i64) -> Result<usize, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let pool = db.pool.clone();
-        
-        let result = tokio::task::spawn_blocking(move || -> Result<usize, Box<dyn Error + Send + Sync>> {
-            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            let delete_time = time_util::now().map_err(|e| e.to_string())?;
-            let res = diesel::update(users::table)
-                .filter(users::id.eq(user_id))
-                .set((users::unregistered.eq(1), users::delete_time.eq(delete_time)))
-                .execute(&mut conn)
-                .map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            Ok(res)
-        })
-        .await
-        .map_err(|e| -> Box<dyn Error> { format!("delete_async error: {}", e).into() })?;
-
-        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
-    }
-
-    /// 根据用户ID获取用户
-    /// @param user_id 用户ID
-    /// @return 用户信息
-    pub fn get_user_by_id(user_id: i64) -> Result<User, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        let user = users::table.filter(users::id.eq(user_id)).first(&mut conn)?;
-        Ok(user)
-    }
-
-    /// 根据用户ID获取用户, 异步方式（静态方法）
-    /// @param user_id 用户ID
-    /// @return 用户信息
-    pub async fn get_user_by_id_async(user_id: i64) -> Result<User, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let pool = db.pool.clone();
-        let result = tokio::task::spawn_blocking(move || -> Result<User, Box<dyn Error + Send + Sync>> {
-            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            let user = users::table.filter(users::id.eq(user_id)).first(&mut conn)?;
-            Ok(user)
-        })
-        .await
-        .map_err(|e| -> Box<dyn Error> { format!("get_user_by_id_async error: {}", e).into() })?;
-
-        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
-    }
-
-    /// 根据用户名获取用户
-    /// @param user_name 用户名
-    /// @return 用户信息
-    pub fn get_user_by_user_name(user_name: &str) -> Result<User, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        let user = users::table.filter(users::user_name.eq(user_name)).first(&mut conn)?;
-        Ok(user)
-    }
-
-    pub async fn get_user_by_user_name_async(user_name: &str) -> Result<User, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let pool = db.pool.clone();
-        let name = user_name.to_string();
-        let result = tokio::task::spawn_blocking(move || -> Result<User, Box<dyn Error + Send + Sync>> {
-            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            let user = users::table.filter(users::user_name.eq(name)).first(&mut conn)?;
-            Ok(user)
-        })
-        .await
-        .map_err(|e| -> Box<dyn Error> { format!("get_user_by_user_name_async error: {}", e).into() })?;
-
-        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
-    }
-
-    /// 获取所有用户
+    /// 获取所有用户（异步方法）
     /// @return 用户列表
-    pub fn get_all_users() -> Result<Vec<User>, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let mut conn = db.pool.get()?;
-        let users = users::table.load(&mut conn)?;
+    pub async fn get_all_users() -> Result<Vec<Model>, Box<dyn Error>> {
+        let instance = Self::try_instance()?;
+        let db = instance.db();
+        let users = Entity::find().all(db).await?;
+        logger::info("All users fetched successfully");
         Ok(users)
     }
 
-    /// 获取所有用户, 异步方式（静态方法）
-    /// @return 用户列表
-    pub async fn get_all_users_async() -> Result<Vec<User>, Box<dyn Error>> {
-        let db = Self::try_instance()?;
-        let pool = db.pool.clone();
-        let result = tokio::task::spawn_blocking(move || -> Result<Vec<User>, Box<dyn Error + Send + Sync>> {
-            let mut conn = pool.get().map_err(|e| Box::new(e) as Box<dyn Error + Send + Sync>)?;
-            let users = users::table.load(&mut conn)?;
-            Ok(users)
-        })
-        .await
-        .map_err(|e| -> Box<dyn Error> { format!("get_all_users_async error: {}", e).into() })?;
-        result.map_err(|e| -> Box<dyn Error> { e.to_string().into() })
+    pub async fn get_user_by_username(username: &str) -> Result<Option<Model>, Box<dyn Error>> {
+        let instance = Self::try_instance()?;
+        let db = instance.db();
+        let user = Entity::find().filter(Column::UserName.eq(username)).one(db).await?;
+        logger::info("User fetched successfully");
+        Ok(user)
     }
+
+    /// 插入用户（异步方法）
+    /// @param user 用户信息
+    /// @return 插入的行数
+    pub async fn insert(input_user: &UserDto<'_>) -> Result<u64, Box<dyn Error>> {
+        let instance = Self::try_instance()?;
+        let db = instance.db();
+
+        let active = ActiveModel {
+            user_name: Set(input_user.user_name.to_string()),
+            password: Set(input_user.password.to_string()),
+            create_time: Set(input_user.create_time),
+            update_time: Set(input_user.update_time),
+            delete_time: Set(input_user.delete_time),
+            unregistered: Set(input_user.unregistered),
+            ..Default::default()
+        };
+
+        let res = active.insert(db).await?;
+        logger::info("User inserted successfully");
+
+        Ok(res.id as u64)
+    }
+
+    /// 更新用户（异步方法）
+    /// @param input_user 用户信息
+    /// @return 更新的行数
+    pub async fn update(input_user: UserDto<'_>) -> Result<usize, Box<dyn Error>> {
+        let instance = Self::try_instance()?;
+        let db = instance.db();
+
+        let active = ActiveModel {
+            user_name: Set(input_user.user_name.to_string()),
+            password: Set(input_user.password.to_string()),
+            update_time: Set(input_user.update_time),
+            ..Default::default()
+        };
+
+        let res = active.update(db).await?;
+        logger::info("User updated successfully");
+
+        Ok(res.id as usize)
+    }
+
+    /// 删除用户（逻辑删除）
+    /// @param user_id 用户ID
+    /// @return 受影响的行数
+    pub async fn delete(user_id: i64) -> Result<usize, Box<dyn Error>> {
+        let instance = Self::try_instance()?;
+        let db = instance.db();
+        // 查找用户
+        let user = Entity::find_by_id(user_id).one(db).await?;
+        if user.is_none() {
+            return Err("User not found".into());
+        }
+        // 转换为 ActiveModel 并更新
+        let mut active: ActiveModel = user.unwrap().into();        
+        active.unregistered = Set(1);
+        active.delete_time = Set(Some(time_util::now()?));
+        let res = active.update(db).await?;
+        logger::info("User deleted successfully");
+
+        Ok(res.id as usize)
+    }
+
 }
