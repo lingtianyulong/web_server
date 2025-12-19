@@ -1,5 +1,5 @@
-use sea_orm::entity::prelude::*;
 use chrono::NaiveDateTime;
+use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "users")]

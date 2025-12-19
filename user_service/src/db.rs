@@ -1,12 +1,12 @@
 use crate::entity::{user::*, user_dto::UserDto};
 use logger;
+use sea_orm::ActiveValue::Set;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
+    EntityTrait, QueryFilter, Statement,
+};
 use std::error::Error;
 use std::sync::OnceLock;
-use sea_orm::{ 
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, 
-    EntityTrait, QueryFilter, Statement, ColumnTrait
-};
-use sea_orm::ActiveValue::Set;
 use utils::time_util;
 
 /// 全局单例 UserDb 实例（线程安全）
@@ -29,7 +29,9 @@ impl UserDb {
         opt.max_connections(10).min_connections(5);
         let db = Database::connect(opt).await?;
 
-        USER_DB.set(UserDb { conn:db }).map_err(|_| "UserDb already initialized")?;
+        USER_DB
+            .set(UserDb { conn: db })
+            .map_err(|_| "UserDb already initialized")?;
         logger::info("Database Connection Pool Initialized.");
         Ok(())
     }
@@ -82,7 +84,10 @@ impl UserDb {
     pub async fn get_user_by_username(username: &str) -> Result<Option<Model>, Box<dyn Error>> {
         let instance = Self::try_instance()?;
         let db = instance.db();
-        let user = Entity::find().filter(Column::UserName.eq(username)).one(db).await?;
+        let user = Entity::find()
+            .filter(Column::UserName.eq(username))
+            .one(db)
+            .await?;
         logger::info("User fetched successfully");
         Ok(user)
     }
@@ -142,7 +147,7 @@ impl UserDb {
             return Err("User not found".into());
         }
         // 转换为 ActiveModel 并更新
-        let mut active: ActiveModel = user.unwrap().into();        
+        let mut active: ActiveModel = user.unwrap().into();
         active.unregistered = Set(1);
         active.delete_time = Set(Some(time_util::now()?));
         let res = active.update(db).await?;
@@ -150,5 +155,4 @@ impl UserDb {
 
         Ok(res.id as usize)
     }
-
 }

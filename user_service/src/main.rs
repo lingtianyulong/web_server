@@ -1,12 +1,17 @@
+use axum::{Router, routing::post};
+use dotenvy;
 use logger::*;
 use std::env;
 use std::error::Error;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 mod db;
 mod entity;
+mod route;
 
-// use db::UserDb;
+use crate::route::user_route::AppState;
+use route::user_route::{SECRET_KEY, get_user, jwt_middleware, login_handler};
 
 fn exe_dir() -> Result<PathBuf, Box<dyn Error>> {
     let exe_path = env::current_exe()?;
@@ -17,69 +22,68 @@ fn exe_dir() -> Result<PathBuf, Box<dyn Error>> {
     }
 }
 
-
-fn main() {
-    let log_level = std::env::var("LOG_LEVEL").unwrap();
-    let log_save_folder = env::var("LOG_SAVE_PATH").unwrap();
-
+fn init_logger(log_level: String, log_save_folder: String) -> Result<(), Box<dyn Error>> {
     let log_save_dir = match exe_dir() {
         Ok(dir) => dir,
         Err(e) => {
             eprintln!("Error getting executable directory: {}", e);
-            return;
+            return Err(e);
         }
     };
     let save_path = log_save_dir.join(log_save_folder);
     if !save_path.as_path().exists() {
         if let Err(e) = std::fs::create_dir_all(&save_path) {
             eprintln!("Failed to create log directory: {}", e);
-            return;
+            return Err(e.into());
         }
     }
-
     let save_path_str = match save_path.to_str() {
         Some(path) => path,
         None => {
             eprintln!("Failed to convert log save path to string");
-            return;
+            return Err("Failed to convert log save path to string".into());
         }
     };
-
-    println!("log_level: {}", log_level);
-    println!("log_save_path: {}", save_path.display());
-
     let config = LoggerConfig::new(log_level, save_path_str.to_string());
     let _ = match init_log(config) {
         Ok(res) => res,
         Err(e) => {
             eprintln!("Failed to initialize logger: {}", e);
-            return;
+            return Err(e.into());
+        }
+    };
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    dotenvy::dotenv().ok();
+
+    let log_level = std::env::var("LOG_LEVEL").unwrap_or("info".to_string());
+    let log_save_folder = env::var("LOG_SAVE_PATH").unwrap_or("logs".to_string());
+
+    match init_logger(log_level, log_save_folder) {
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!("Failed to initialize logger: {}", e);
         }
     };
 
-    info("Hello, world!");
-    warn("Hello, world!");
-    error("Hello, world!");
+    let app_state = AppState {
+        jwt_secret: SECRET_KEY.to_vec(),
+    };
+    let api_v1 = Router::new()
+        .route("/user", post(get_user))
+        .layer(axum::middleware::from_fn_with_state(app_state.clone(), jwt_middleware));
 
-    // 初始化数据库连接池（全局单例）
-    // if let Err(e) = UserDb::init() {
-    //     error(&format!("Failed to initialize database: {}", e));
-    //     return;
-    // }
+    let app = Router::new()
+        .route("/login", post(login_handler))
+        .nest("/api/v1", api_v1)
+        .with_state(app_state);
 
-    // // 测试数据库连接
-    // match UserDb::connected() {
-    //     Ok(true) => info("Database connection is OK."),
-    //     Ok(false) => warn("Database connection check returned false."),
-    //     Err(e) => {
-    //         error(&format!("Database connection failed: {}", e));
-    //         return;
-    //     }
-    // }
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+    println!("Server is running on {}", addr);
 
-    // 之后在任何地方都可以直接调用 UserDb 的静态方法
-    // 例如：UserDb::insert(&new_user)?
-    // 例如：UserDb::insert_async(&new_user).await?
-
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
