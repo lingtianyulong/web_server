@@ -37,3 +37,39 @@ impl LoginResponse {
         }
     }
 }
+
+/// 用户注册请求结构体
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct RegisterRequest {
+    pub user_name: String,
+    pub password: String,
+}
+
+#[allow(dead_code)]
+impl RegisterRequest {
+    pub fn new(user_name: String, password: String) -> Self {
+        Self {
+            user_name,
+            password,
+        }
+    }
+}
+
+/// 用户注册响应结构体
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct RegisterResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[allow(dead_code)]
+impl RegisterResponse {
+    pub fn new(success: bool, message: String) -> Self {
+        Self {
+            success,
+            message,
+        }
+    }
+}

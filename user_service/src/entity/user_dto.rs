@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct UserDto<'a> {
-    pub id: i64,
     pub user_name: &'a str,
     pub password: &'a str,
     pub create_time: NaiveDateTime,

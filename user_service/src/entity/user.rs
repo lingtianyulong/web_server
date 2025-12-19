@@ -5,7 +5,7 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "users")]
 #[allow(dead_code)]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = true)]
+    #[sea_orm(primary_key, auto_increment = true, column_name = "Id")]
     pub id: i64,
     pub user_name: String,
     pub password: String,

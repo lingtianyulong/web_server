@@ -11,7 +11,8 @@ mod entity;
 mod route;
 
 use crate::route::user_route::AppState;
-use route::user_route::{SECRET_KEY, get_user, jwt_middleware, login_handler};
+use route::user_route::*;
+use db::UserDb;
 
 fn exe_dir() -> Result<PathBuf, Box<dyn Error>> {
     let exe_path = env::current_exe()?;
@@ -69,6 +70,13 @@ async fn main() {
         }
     };
 
+    match UserDb::init().await {
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!("Failed to initialize database: {}", e);
+        }
+    };
+
     let app_state = AppState {
         jwt_secret: SECRET_KEY.to_vec(),
     };
@@ -78,6 +86,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/login", post(login_handler))
+        .route("/register", post(register_handler))
         .nest("/api/v1", api_v1)
         .with_state(app_state);
 
