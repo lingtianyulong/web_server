@@ -6,7 +6,7 @@ use axum::{
         HeaderValue, StatusCode,
     },
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
     Extension, Json,
 };
 use chrono::Utc;
@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use utils::time_util;
 use crate::entity::user_dto::UserDto;
 use crate::db::UserDb;
+
 
 pub const SECRET_KEY: &[u8] = b"my-secret-key";
 const TOKEN_TTL_SECS: i64 = 7 * 24 * 3600;
@@ -56,9 +57,10 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
     (StatusCode::OK, Json(response))
 }
 
-pub async fn get_user(Extension(claims): Extension<Claims>) -> impl IntoResponse {
+pub async fn get_user(Extension(claims): Extension<Claims>) -> (StatusCode, Json<LoginResponse>) {
+    println!("claims: {:?}", claims);
     let response = LoginResponse::new(true, "Get user successful".to_string(), claims.sub);
-    Json(response)
+    (StatusCode::OK, Json(response))
 }
 
 // 验证中间件
@@ -151,7 +153,6 @@ pub async fn register_handler(Json(payload): Json<RegisterRequest>) -> (StatusCo
         delete_time: None,
         unregistered: 0,
     };
-
 
     match UserDb::insert(&user).await {
         Ok(res) => if res > 0 {
