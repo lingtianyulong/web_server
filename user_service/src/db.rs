@@ -24,7 +24,7 @@ impl UserDb {
     /// 应该在应用启动时调用
     pub async fn init() -> Result<(), Box<dyn Error>> {
         logger::info("Initialize Database Connection Pool.");
-        let database_url = std::env::var("DATABASE_URL")?;
+        let database_url = std::env::var("DATABASE_URL").unwrap_or("mysql://root:123456@localhost/talos".to_string());
         let mut opt = ConnectOptions::new(database_url);
         opt.max_connections(10).min_connections(5);
         let db = Database::connect(opt).await?;
