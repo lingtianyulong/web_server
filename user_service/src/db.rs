@@ -81,13 +81,21 @@ impl UserDb {
         Ok(users)
     }
 
-    pub async fn get_user_by_username(username: &str) -> Result<Option<Model>, Box<dyn Error>> {
+    pub async fn get_user_by_username(username: &str) -> Result<Model, Box<dyn Error>> {
         let instance = Self::try_instance()?;
         let db = instance.db();
-        let user = Entity::find()
+        let result = match Entity::find()
             .filter(Column::UserName.eq(username))
             .one(db)
-            .await?;
+            .await {
+                Ok(res)=>res,
+                Err(e)=>return Err(e.into()),
+            };
+
+        let user = match result {
+            Some(v) => v,
+            None => return Err("User not found".into()),
+        };
         logger::info("User fetched successfully");
         Ok(user)
     }

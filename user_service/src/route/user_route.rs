@@ -37,6 +37,21 @@ pub struct AppState {
 }
 
 pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Json<LoginResponse>) {
+    // 先验证用户是否存在
+    let user = match UserDb::get_user_by_username(&payload.user_name).await {
+        Ok(v) => v,
+        Err(e) => {
+            let response = LoginResponse::new(false, e.to_string(), "".to_string());
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
+        }
+    };
+
+    // 验证密码是否正确
+    if user.password != payload.password {
+        let response = LoginResponse::new(false, "Invalid password".to_string(), "".to_string());
+        return (StatusCode::UNAUTHORIZED, Json(response));
+    }
+
     // 直接使用 UTC 时间戳，避免时区混淆
     let exp = (Utc::now().timestamp() + TOKEN_TTL_SECS) as usize;
 
@@ -52,6 +67,7 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
         &EncodingKey::from_secret(SECRET_KEY),
     )
     .unwrap();
+
     let response = LoginResponse::new(true, "Login successful".to_string(), token);
 
     (StatusCode::OK, Json(response))
