@@ -84,10 +84,13 @@ async fn main() {
         .route("/user", post(get_user))
         .layer(axum::middleware::from_fn_with_state(app_state.clone(), jwt_middleware));
 
-    let app = Router::new()
+    let api_user = Router::new()
         .route("/login", post(login_handler))
-        .route("/register", post(register_handler))
+        .route("/register", post(register_handler));
+
+    let app = Router::new()
         .nest("/api/v1", api_v1)
+        .nest("/api/v1/user", api_user)
         .with_state(app_state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));

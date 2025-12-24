@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use utils::time_util;
 use crate::entity::user_dto::UserDto;
 use crate::db::UserDb;
-
+use encryption::argon2_encrypt::Argon2Encrypt;
+use encryption::encrypt_trait::Encrypt;
 
 pub const SECRET_KEY: &[u8] = b"my-secret-key";
 const TOKEN_TTL_SECS: i64 = 7 * 24 * 3600;
@@ -47,7 +48,9 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
     };
 
     // 验证密码是否正确
-    if user.password != payload.password {
+    let argon2_encrypt = Argon2Encrypt::new();
+    let is_valid = argon2_encrypt.verify(&payload.password, &user.password).unwrap();
+    if !is_valid {
         let response = LoginResponse::new(false, "Invalid password".to_string(), "".to_string());
         return (StatusCode::UNAUTHORIZED, Json(response));
     }
