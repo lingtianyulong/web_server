@@ -195,7 +195,7 @@ pub async fn register_handler(
     }
 }
 
-pub async fn update_handler(
+pub async fn reset_password_handler(
     Json(payload): Json<UpdateRequest>,
 ) -> (StatusCode, Json<UpdateResponse>) {
     let user = match UserDb::get_user_by_username(&payload.user_name).await {
