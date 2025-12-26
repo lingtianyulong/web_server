@@ -16,5 +16,9 @@
 pub trait Encrypt {
     fn encrypt(&self, data: &str) -> Result<String, Box<dyn std::error::Error>>;
     fn decrypt(&self, data: &str) -> Result<String, Box<dyn std::error::Error>>;
-    fn verify(&self, password: &str, store_password: &str) -> Result<bool, Box<dyn std::error::Error>>;
+    fn verify(
+        &self,
+        password: &str,
+        store_password: &str,
+    ) -> Result<bool, Box<dyn std::error::Error>>;
 }

@@ -1,5 +1,5 @@
-use crate::encrypt_trait::Encrypt;
 use crate::argon2_encrypt::Argon2Encrypt;
+use crate::encrypt_trait::Encrypt;
 
 #[allow(dead_code)]
 pub enum EncryptType {
@@ -12,5 +12,3 @@ pub fn create_encrypt(encrypt_type: EncryptType) -> Box<dyn Encrypt> {
         EncryptType::Argon2 => Box::new(Argon2Encrypt::new()),
     }
 }
-
-

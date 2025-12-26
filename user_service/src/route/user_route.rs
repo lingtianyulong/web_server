@@ -1,22 +1,23 @@
+use crate::db::UserDb;
+use crate::entity::user_dto::UserDto;
 use crate::route::request_data::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
+use crate::route::request_data::{UpdateRequest, UpdateResponse};
 use axum::{
+    Extension, Json,
     extract::{Request, State},
     http::{
-        header::{HeaderName, AUTHORIZATION},
         HeaderValue, StatusCode,
+        header::{AUTHORIZATION, HeaderName},
     },
     middleware::Next,
     response::Response,
-    Extension, Json,
 };
 use chrono::Utc;
+use encryption::argon2_encrypt::Argon2Encrypt;
+use encryption::encrypt_trait::Encrypt;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use utils::time_util;
-use crate::entity::user_dto::UserDto;
-use crate::db::UserDb;
-use encryption::argon2_encrypt::Argon2Encrypt;
-use encryption::encrypt_trait::Encrypt;
 
 pub const SECRET_KEY: &[u8] = b"my-secret-key";
 const TOKEN_TTL_SECS: i64 = 7 * 24 * 3600;
@@ -26,9 +27,9 @@ const REFRESHED_TOKEN_HEADER: &str = "x-refreshed-token";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
-    pub sub: String,        // 用户 ID
-    pub exp: usize,         // 过期时间
-    pub password: String,   // 密码
+    pub sub: String,      // 用户 ID
+    pub exp: usize,       // 过期时间
+    pub password: String, // 密码
 }
 
 /// 应用状态，用于在中间件中共享数据
@@ -49,7 +50,9 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
 
     // 验证密码是否正确
     let argon2_encrypt = Argon2Encrypt::new();
-    let is_valid = argon2_encrypt.verify(&payload.password, &user.password).unwrap();
+    let is_valid = argon2_encrypt
+        .verify(&payload.password, &user.password)
+        .unwrap();
     if !is_valid {
         let response = LoginResponse::new(false, "Invalid password".to_string(), "".to_string());
         return (StatusCode::UNAUTHORIZED, Json(response));
@@ -146,16 +149,17 @@ pub async fn jwt_middleware(
     if let Some(token) = refreshed_token {
         // 将刷新后的 token 通过响应头返回给客户端
         let header_name = HeaderName::from_static(REFRESHED_TOKEN_HEADER);
-        let header_value =
-            HeaderValue::from_str(&format!("Bearer {}", token)).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let header_value = HeaderValue::from_str(&format!("Bearer {}", token))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         response.headers_mut().insert(header_name, header_value);
     }
 
     Ok(response)
 }
 
-
-pub async fn register_handler(Json(payload): Json<RegisterRequest>) -> (StatusCode, Json<RegisterResponse>) {
+pub async fn register_handler(
+    Json(payload): Json<RegisterRequest>,
+) -> (StatusCode, Json<RegisterResponse>) {
     let create_time = match time_util::now() {
         Ok(tm) => tm,
         Err(e) => {
@@ -163,8 +167,9 @@ pub async fn register_handler(Json(payload): Json<RegisterRequest>) -> (StatusCo
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
         }
     };
-    
+
     let user = UserDto {
+        id: None, // 注册时 id 为 None
         user_name: payload.user_name.as_str(),
         password: payload.password.as_str(),
         create_time,
@@ -174,15 +179,63 @@ pub async fn register_handler(Json(payload): Json<RegisterRequest>) -> (StatusCo
     };
 
     match UserDb::insert(&user).await {
-        Ok(res) => if res > 0 {
-            let response = RegisterResponse::new(true, "Register successful".to_string());
-            (StatusCode::OK, Json(response))
-        } else {
-            let response = RegisterResponse::new(false, "Register failed".to_string());
-            (StatusCode::OK, Json(response))
+        Ok(res) => {
+            if res > 0 {
+                let response = RegisterResponse::new(true, "Register successful".to_string());
+                (StatusCode::OK, Json(response))
+            } else {
+                let response = RegisterResponse::new(false, "Register failed".to_string());
+                (StatusCode::OK, Json(response))
+            }
         }
         Err(e) => {
             let response = RegisterResponse::new(false, e.to_string());
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
+        }
+    }
+}
+
+pub async fn update_handler(
+    Json(payload): Json<UpdateRequest>,
+) -> (StatusCode, Json<UpdateResponse>) {
+    let user = match UserDb::get_user_by_username(&payload.user_name).await {
+        Ok(v) => v,
+        Err(e) => {
+            let response = UpdateResponse::new(false, e.to_string());
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
+        }
+    };
+
+    let update_time = match time_util::now() {
+        Ok(tm) => tm,
+        Err(e) => {
+            let response = UpdateResponse::new(false, e.to_string());
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
+        }
+    };
+
+    let update_user = UserDto {
+        id: Some(user.id), // 确保 id 存在
+        user_name: user.user_name.as_str(),
+        password: payload.password.as_str(),
+        create_time: user.create_time,
+        update_time: Some(update_time),
+        delete_time: None,
+        unregistered: 0,
+    };
+
+    match UserDb::update(&update_user).await {
+        Ok(res) => {
+            if res > 0 {
+                let response = UpdateResponse::new(true, "Update successful".to_string());
+                (StatusCode::OK, Json(response))
+            } else {
+                let response = UpdateResponse::new(false, "Update failed".to_string());
+                (StatusCode::OK, Json(response))
+            }
+        }
+        Err(e) => {
+            let response = UpdateResponse::new(false, e.to_string());
             (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
         }
     }

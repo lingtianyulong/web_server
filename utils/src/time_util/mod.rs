@@ -1,6 +1,6 @@
-use chrono::{Timelike, Utc, Duration};
-use std::error::Error;
 use chrono::NaiveDateTime;
+use chrono::{Duration, Timelike, Utc};
+use std::error::Error;
 
 /**
  * 获取当前北京时间
@@ -26,7 +26,9 @@ mod tests {
     use chrono::{Duration, Timelike, Utc};
     #[test]
     fn test_now() {
-        let tm1 = (Utc::now().naive_local() + Duration::hours(8)).with_nanosecond(0).unwrap();
+        let tm1 = (Utc::now().naive_local() + Duration::hours(8))
+            .with_nanosecond(0)
+            .unwrap();
         let tm2 = now().unwrap();
         println!("tm1: {}", tm1);
         println!("tm2: {}", tm2);

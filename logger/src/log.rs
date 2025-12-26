@@ -21,7 +21,6 @@ fn my_log_format(
 }
 
 pub fn init_log(config: LoggerConfig) -> Result<bool, Box<dyn Error>> {
-   
     let res = std::panic::catch_unwind(|| {
         let is_async = true;
         let write_mode = if is_async {

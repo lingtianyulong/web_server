@@ -11,8 +11,8 @@ mod entity;
 mod route;
 
 use crate::route::user_route::AppState;
-use route::user_route::*;
 use db::UserDb;
+use route::user_route::*;
 
 fn exe_dir() -> Result<PathBuf, Box<dyn Error>> {
     let exe_path = env::current_exe()?;
@@ -80,13 +80,18 @@ async fn main() {
     let app_state = AppState {
         jwt_secret: SECRET_KEY.to_vec(),
     };
-    let api_v1 = Router::new()
-        .route("/user", post(get_user))
-        .layer(axum::middleware::from_fn_with_state(app_state.clone(), jwt_middleware));
+    let api_v1 =
+        Router::new()
+            .route("/user", post(get_user))
+            .layer(axum::middleware::from_fn_with_state(
+                app_state.clone(),
+                jwt_middleware,
+            ));
 
     let api_user = Router::new()
         .route("/login", post(login_handler))
-        .route("/register", post(register_handler));
+        .route("/register", post(register_handler))
+        .route("/update", post(update_handler));
 
     let app = Router::new()
         .nest("/api/v1", api_v1)

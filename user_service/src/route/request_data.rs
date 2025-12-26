@@ -67,9 +67,39 @@ pub struct RegisterResponse {
 #[allow(dead_code)]
 impl RegisterResponse {
     pub fn new(success: bool, message: String) -> Self {
+        Self { success, message }
+    }
+}
+
+/// 用户更新请求结构体
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct UpdateRequest {
+    pub user_name: String,
+    pub password: String,
+}
+
+#[allow(dead_code)]
+impl UpdateRequest {
+    pub fn new(user_name: String, password: String) -> Self {
         Self {
-            success,
-            message,
+            user_name,
+            password,
         }
+    }
+}
+
+/// 用户更新响应结构体
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct UpdateResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[allow(dead_code)]
+impl UpdateResponse {
+    pub fn new(success: bool, message: String) -> Self {
+        Self { success, message }
     }
 }

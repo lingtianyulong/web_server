@@ -24,7 +24,8 @@ impl UserDb {
     /// 应该在应用启动时调用
     pub async fn init() -> Result<(), Box<dyn Error>> {
         logger::info("Initialize Database Connection Pool.");
-        let database_url = std::env::var("DATABASE_URL").unwrap_or("mysql://root:123456@localhost/talos".to_string());
+        let database_url = std::env::var("DATABASE_URL")
+            .unwrap_or("mysql://root:123456@localhost/talos".to_string());
         let mut opt = ConnectOptions::new(database_url);
         opt.max_connections(10).min_connections(5);
         let db = Database::connect(opt).await?;
@@ -87,10 +88,11 @@ impl UserDb {
         let result = match Entity::find()
             .filter(Column::UserName.eq(username))
             .one(db)
-            .await {
-                Ok(res)=>res,
-                Err(e)=>return Err(e.into()),
-            };
+            .await
+        {
+            Ok(res) => res,
+            Err(e) => return Err(e.into()),
+        };
 
         let user = match result {
             Some(v) => v,
@@ -126,11 +128,18 @@ impl UserDb {
     /// 更新用户（异步方法）
     /// @param input_user 用户信息
     /// @return 更新的行数
-    pub async fn update(input_user: UserDto<'_>) -> Result<usize, Box<dyn Error>> {
+    pub async fn update(input_user: &UserDto<'_>) -> Result<usize, Box<dyn Error>> {
         let instance = Self::try_instance()?;
         let db = instance.db();
 
+        // 检查是否提供了 id，否则无法执行更新操作
+        let user_id = match input_user.id {
+            Some(id) => id,
+            None => return Err("User ID is required for update operation".into()),
+        };
+
         let active = ActiveModel {
+            id: Set(user_id), // 设置主键 id 以支持更新操作
             user_name: Set(input_user.user_name.to_string()),
             password: Set(input_user.password.to_string()),
             update_time: Set(input_user.update_time),
