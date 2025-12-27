@@ -1,7 +1,7 @@
 use crate::db::UserDb;
 use crate::entity::user_dto::UserDto;
 use crate::route::request_data::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
-use crate::route::request_data::{UpdateRequest, UpdateResponse};
+use crate::route::request_data::{UpdateRequest, UpdateResponse, UnregisteredRequest, UnregisteredResponse};
 use axum::{
     Extension, Json,
     extract::{Request, State},
@@ -239,4 +239,34 @@ pub async fn reset_password_handler(
             (StatusCode::INTERNAL_SERVER_ERROR, Json(response))
         }
     }
+}
+
+
+pub async fn unregistered_handler(
+    Json(payload): Json<UnregisteredRequest>,
+) -> (StatusCode, Json<UnregisteredResponse>) {
+    let user = match UserDb::get_user_by_username(&payload.user_name).await {
+        Ok(v) => v,
+        Err(e) => {
+            let response = UnregisteredResponse::new(false, e.to_string());
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
+        }
+    };
+
+    match UserDb::delete(user.id).await {
+        Ok(res) => {
+            if res > 0 {
+                let response = UnregisteredResponse::new(true, "Unregistered successful".to_string());
+                (StatusCode::OK, Json(response))
+            } else {
+                let response = UnregisteredResponse::new(false, "Unregistered failed".to_string());
+                (StatusCode::OK, Json(response))
+            }
+        }
+        Err(e) => {
+            let response = UnregisteredResponse::new(false, e.to_string());
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
+        }
+    }
+
 }

@@ -103,3 +103,32 @@ impl UpdateResponse {
         Self { success, message }
     }
 }
+
+/// 用户注销请求结构体
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct UnregisteredRequest {
+    pub user_name: String,
+}
+
+#[allow(dead_code)]
+impl UnregisteredRequest {
+    pub fn new(user_name: String) -> Self {
+        Self { user_name }
+    }
+}
+
+/// 用户注销响应结构体
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct UnregisteredResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+#[allow(dead_code)]
+impl UnregisteredResponse {
+    pub fn new(success: bool, message: String) -> Self {
+        Self { success, message }
+    }
+}

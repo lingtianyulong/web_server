@@ -91,7 +91,8 @@ async fn main() {
     let api_user = Router::new()
         .route("/login", post(login_handler))
         .route("/register", post(register_handler))
-        .route("/reset_password", post(reset_password_handler));
+        .route("/reset_password", post(reset_password_handler))
+        .route("/unregistered", post(unregistered_handler));
 
     let app = Router::new()
         .nest("/api/v1", api_v1)
