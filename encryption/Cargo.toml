@@ -9,4 +9,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 argon2 = "0.5.3"
-rand = "0.8.5"
+rand = "0.8.5"   # argon2 依赖的 rand 版本较低, 不要轻易升级
