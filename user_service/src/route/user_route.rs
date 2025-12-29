@@ -48,6 +48,14 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
         }
     };
 
+    // 验证用户是否被注销
+    if user.unregistered == 1 {
+        let info = format!("the account {} of user is unregistered.", payload.user_name);
+        let response = LoginResponse::new(false, info, "".to_string());
+        return (StatusCode::UNAUTHORIZED, Json(response));
+    }
+
+
     // 验证密码是否正确
     let argon2_encrypt = Argon2Encrypt::new();
     let is_valid = argon2_encrypt
