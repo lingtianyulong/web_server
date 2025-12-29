@@ -18,6 +18,8 @@ use encryption::encrypt_trait::Encrypt;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use utils::time_util;
+use std::error::Error;
+use std::borrow::Cow;
 
 pub const SECRET_KEY: &[u8] = b"my-secret-key";
 const TOKEN_TTL_SECS: i64 = 7 * 24 * 3600;
@@ -178,8 +180,8 @@ pub async fn register_handler(
 
     let user = UserDto {
         id: None, // 注册时 id 为 None
-        user_name: payload.user_name.as_str(),
-        password: payload.password.as_str(),
+        user_name: Cow::Borrowed(&payload.user_name),
+        password: Cow::Borrowed(&payload.password),
         create_time,
         update_time: None,
         delete_time: None,
@@ -203,33 +205,37 @@ pub async fn register_handler(
     }
 }
 
+async fn build_user_dto(
+    payload: &UpdateRequest,
+) -> Result<UserDto<'_>, Box<dyn Error>> {
+    let user = UserDb::get_user_by_username(&payload.user_name).await?;
+    if user.unregistered == 1 {
+        return Err("User is unregistered".into());
+    }
+
+    let update_time = time_util::now()?;
+
+    Ok(UserDto {
+        id: Some(user.id),
+        user_name: Cow::Owned(user.user_name),
+        password: Cow::Borrowed(&payload.password),
+        create_time: user.create_time.clone(),
+        update_time: Some(update_time.clone()),
+        delete_time: None,
+        unregistered: 0,
+    })
+}
+
 pub async fn reset_password_handler(
     Json(payload): Json<UpdateRequest>,
 ) -> (StatusCode, Json<UpdateResponse>) {
-    let user = match UserDb::get_user_by_username(&payload.user_name).await {
+   
+    let update_user = match build_user_dto(&payload).await {
         Ok(v) => v,
         Err(e) => {
             let response = UpdateResponse::new(false, e.to_string());
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
         }
-    };
-
-    let update_time = match time_util::now() {
-        Ok(tm) => tm,
-        Err(e) => {
-            let response = UpdateResponse::new(false, e.to_string());
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
-        }
-    };
-
-    let update_user = UserDto {
-        id: Some(user.id), // 确保 id 存在
-        user_name: user.user_name.as_str(),
-        password: payload.password.as_str(),
-        create_time: user.create_time,
-        update_time: Some(update_time),
-        delete_time: None,
-        unregistered: 0,
     };
 
     match UserDb::update(&update_user).await {

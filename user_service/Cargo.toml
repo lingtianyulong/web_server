@@ -21,3 +21,5 @@ async-trait = "0.1"
 
 dotenvy = "0.15"
 jsonwebtoken = {version = "10.2", features = ["rust_crypto"]}
+
+thiserror = "2.0"
