@@ -54,8 +54,7 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
 
     // 验证用户是否被注销
     if user.unregistered == 1 {
-        let info = format!("the account {} of user is unregistered.", payload.user_name);
-        let response = LoginResponse::new(false, info, "".to_string());
+        let response = LoginResponse::new(false, "用户已注销!".to_string(), "".to_string());
         return (StatusCode::UNAUTHORIZED, Json(response));
     }
 
@@ -63,9 +62,10 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
     let argon2_encrypt = Argon2Encrypt::new();
     let is_valid = argon2_encrypt
         .verify(&payload.password, &user.password)
-        .unwrap();
+        .unwrap_or(false);
+
     if !is_valid {
-        let response = LoginResponse::new(false, "Invalid password".to_string(), "".to_string());
+        let response = LoginResponse::new(false, "用户名或密码错误!".to_string(), "".to_string());
         return (StatusCode::UNAUTHORIZED, Json(response));
     }
 
