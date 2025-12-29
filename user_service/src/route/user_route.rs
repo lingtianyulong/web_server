@@ -1,7 +1,9 @@
 use crate::db::UserDb;
 use crate::entity::user_dto::UserDto;
 use crate::route::request_data::{LoginRequest, LoginResponse, RegisterRequest, RegisterResponse};
-use crate::route::request_data::{UpdateRequest, UpdateResponse, UnregisteredRequest, UnregisteredResponse};
+use crate::route::request_data::{
+    UnregisteredRequest, UnregisteredResponse, UpdateRequest, UpdateResponse,
+};
 use axum::{
     Extension, Json,
     extract::{Request, State},
@@ -17,9 +19,9 @@ use encryption::argon2_encrypt::Argon2Encrypt;
 use encryption::encrypt_trait::Encrypt;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
-use utils::time_util;
-use std::error::Error;
 use std::borrow::Cow;
+use std::error::Error;
+use utils::time_util;
 
 pub const SECRET_KEY: &[u8] = b"my-secret-key";
 const TOKEN_TTL_SECS: i64 = 7 * 24 * 3600;
@@ -56,7 +58,6 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
         let response = LoginResponse::new(false, info, "".to_string());
         return (StatusCode::UNAUTHORIZED, Json(response));
     }
-
 
     // 验证密码是否正确
     let argon2_encrypt = Argon2Encrypt::new();
@@ -205,9 +206,7 @@ pub async fn register_handler(
     }
 }
 
-async fn build_user_dto(
-    payload: &UpdateRequest,
-) -> Result<UserDto<'_>, Box<dyn Error>> {
+async fn build_user_dto(payload: &UpdateRequest) -> Result<UserDto<'_>, Box<dyn Error>> {
     let user = UserDb::get_user_by_username(&payload.user_name).await?;
     if user.unregistered == 1 {
         return Err("User is unregistered".into());
@@ -229,7 +228,6 @@ async fn build_user_dto(
 pub async fn reset_password_handler(
     Json(payload): Json<UpdateRequest>,
 ) -> (StatusCode, Json<UpdateResponse>) {
-   
     let update_user = match build_user_dto(&payload).await {
         Ok(v) => v,
         Err(e) => {
@@ -255,7 +253,6 @@ pub async fn reset_password_handler(
     }
 }
 
-
 pub async fn unregistered_handler(
     Json(payload): Json<UnregisteredRequest>,
 ) -> (StatusCode, Json<UnregisteredResponse>) {
@@ -270,7 +267,8 @@ pub async fn unregistered_handler(
     match UserDb::delete(user.id).await {
         Ok(res) => {
             if res > 0 {
-                let response = UnregisteredResponse::new(true, "Unregistered successful".to_string());
+                let response =
+                    UnregisteredResponse::new(true, "Unregistered successful".to_string());
                 (StatusCode::OK, Json(response))
             } else {
                 let response = UnregisteredResponse::new(false, "Unregistered failed".to_string());
@@ -282,5 +280,4 @@ pub async fn unregistered_handler(
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
         }
     }
-
 }
