@@ -2,7 +2,6 @@ use axum::{Router, routing::post};
 use dotenvy;
 use logger::*;
 use std::env;
-use std::error::Error;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
@@ -11,15 +10,17 @@ mod entity;
 mod route;
 
 use crate::route::user_route::AppState;
+use anyhow::{Result, bail};
 use db::UserDb;
 use route::user_route::*;
+use std::error::Error;
 
-fn exe_dir() -> Result<PathBuf, Box<dyn Error>> {
+fn exe_dir() -> Result<PathBuf> {
     let exe_path = env::current_exe()?;
     if let Some(exe_dir) = exe_path.parent() {
         Ok(exe_dir.to_path_buf())
     } else {
-        Err("Failed to get the parrent directory of executable path".into())
+        bail!("Failed to get the parrent directory of executable path.");
     }
 }
 
@@ -27,30 +28,30 @@ fn init_logger(log_level: String, log_save_folder: String) -> Result<(), Box<dyn
     let log_save_dir = match exe_dir() {
         Ok(dir) => dir,
         Err(e) => {
-            eprintln!("Error getting executable directory: {}", e);
-            return Err(e);
+            return Err(format!("Error getting executable directory: {}", e.to_string()).into());
         }
     };
     let save_path = log_save_dir.join(log_save_folder);
     if !save_path.as_path().exists() {
         if let Err(e) = std::fs::create_dir_all(&save_path) {
-            eprintln!("Failed to create log directory: {}", e);
-            return Err(e.into());
+            return Err(format!("Failed to create log directory: {}", e.to_string()).into());
         }
     }
     let save_path_str = match save_path.to_str() {
         Some(path) => path,
         None => {
-            eprintln!("Failed to convert log save path to string");
-            return Err("Failed to convert log save path to string".into());
+            return Err(format!(
+                "Failed to convert log save path to string: {}",
+                save_path.display()
+            )
+            .into());
         }
     };
     let config = LoggerConfig::new(log_level, save_path_str.to_string());
     let _ = match init_log(config) {
         Ok(res) => res,
         Err(e) => {
-            eprintln!("Failed to initialize logger: {}", e);
-            return Err(e.into());
+            return Err(format!("Failed to initialize logger: {}", e.to_string()).into());
         }
     };
     Ok(())
