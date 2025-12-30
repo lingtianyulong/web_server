@@ -78,12 +78,17 @@ pub async fn login_handler(Json(payload): Json<LoginRequest>) -> (StatusCode, Js
         exp: exp,
     };
 
-    let token = encode(
+    let token = match encode(
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(SECRET_KEY),
-    )
-    .unwrap();
+    ) {
+        Ok(token) => token,
+        Err(e) => {
+            let response = LoginResponse::new(false, e.to_string(), "".to_string());
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
+        }
+    };
 
     let response = LoginResponse::new(true, "Login successful".to_string(), token);
 
